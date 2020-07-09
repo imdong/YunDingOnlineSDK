@@ -131,7 +131,7 @@ define(['protocol'], function (Protocol) {
             "connector.fationHandler.upFationUserSkill": [],
             "connector.fationHandler.upUserFationLevel": [],
             "connector.loginHandler.login": [
-                CoreHooks.onLoginGame
+                CoreHooks.onSaveData
             ],
             "connector.playerHandler.byGoodsToSystem": [],
             "connector.playerHandler.byPalyerGoods": [],
@@ -139,7 +139,9 @@ define(['protocol'], function (Protocol) {
             "connector.playerHandler.getPlayerSellGoods": [],
             "connector.playerHandler.init": [],
             "connector.playerHandler.move": [],
-            "connector.playerHandler.moveToNewMap": [],
+            "connector.playerHandler.moveToNewMap": [
+                CoreHooks.onSaveData
+            ],
             "connector.playerHandler.nextMap": [],
             "connector.playerHandler.payUserTask": [],
             "connector.playerHandler.sellGoods": [],
@@ -546,7 +548,7 @@ define(['protocol'], function (Protocol) {
 
         // 如果没有人接收 就打印出来
         if (!is_call) {
-            console.log('onData', is_call, msg);
+            console.log('onData', msg.route, msg.body);
         }
     };
 
@@ -757,7 +759,7 @@ define(['protocol'], function (Protocol) {
     /**
      * 出售物品
      */
-    GameApi.prototype.sellGoods = function (ugid, price, count) {
+    GameApi.prototype.playerSellGoods = function (ugid, price, count) {
         this.sendMessage({
             ugid: ugid,
             game_gold: price,
@@ -780,17 +782,6 @@ define(['protocol'], function (Protocol) {
     GameApi.prototype.getMyTitle = function () {
         this.sendMessage({}, "connector.userHandler.getMyTitle");
     }
-
-    // /**
-    //  * 未知 被禁用
-    //  */
-    // GameApi.prototype.sellGoods = function (id, price, count) {
-    //     this.sendMessage({
-    //         ugid: id,
-    //         game_gold: price,
-    //         count
-    //     }, "connector.playerHandler.sellGoods");
-    // }
 
     /**
      * 初始我得宠物
@@ -849,13 +840,6 @@ define(['protocol'], function (Protocol) {
         this.sendMessage({
             utid
         }, "connector.playerHandler.payUserTask");
-    }
-
-    /**
-     * 初始我得召唤兽
-     */
-    GameApi.prototype.getMyPet = function () {
-        this.sendMessage({}, "connector.userHandler.getMyPet");
     }
 
     /**
@@ -932,7 +916,7 @@ define(['protocol'], function (Protocol) {
     /**
      * 分解物品
      */
-    GameApi.prototype.sellGoods = function (selectGoodsArr) {
+    GameApi.prototype.userSellGoods = function (selectGoodsArr) {
         this.sendMessage({
             arr: selectGoodsArr
         }, "connector.userHandler.sellGoods");
@@ -1199,6 +1183,18 @@ define(['protocol'], function (Protocol) {
          * @param {*} data
          */
         onLoginGame: function (data) {
+            if (data.code != RES_OK) {
+                console.error('onLoginGame', data.msg);
+                return;
+            }
+
+            this.user_info = Object.assign(this.user_info, data.data);
+        },
+        /**
+         * 主要是用于保存数据
+         * @param {*} data
+         */
+        onSaveData: function (data) {
             if (data.code != RES_OK) {
                 console.error('onLoginGame', data.msg);
                 return;
