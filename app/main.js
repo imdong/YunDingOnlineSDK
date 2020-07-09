@@ -34,11 +34,18 @@
     requirejs(require_list, function (tpl, config, Vue, axios, GameApi) {
         document.getElementById('app').innerHTML = tpl;
 
+        // 创建对象
         let game_api = new GameApi();
+
+        // 屏蔽 onLeave onAdd 消息刷屏
+        let emptyCb = function (data) {return false;};
+        emptyCb.hookMark = 'emptyCb';
+        let onLeave = game_api.regHookHandler('onLeave', emptyCb);
+        let onAdd = game_api.regHookHandler('onAdd', emptyCb);
 
         game_api.login('test2', '123456');
 
-        console.log(game_api);
+        console.log(game_api, onLeave, onAdd);
         window.game_api = game_api;
     });
 
