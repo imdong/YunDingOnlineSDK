@@ -36,7 +36,6 @@
 
         let game_api = new GameApi();
 
-        game_api.start();
         game_api.login('test2', '123456');
 
         console.log(game_api);
