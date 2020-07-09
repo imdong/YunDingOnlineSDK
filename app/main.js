@@ -8,7 +8,7 @@
             'element-ui': 'https://cdn.jsdelivr.net/npm/element-ui@2.13.2/lib/index',
             'element-ui-theme': 'https://cdn.jsdelivr.net/npm/element-ui@2.13.2/lib/theme-chalk/index',
             YunDingOnlineSDK: 'app/lib/YunDingOnlineSDK',
-            'app-testApi': 'templates/testApi.html',
+            'app-main': 'templates/main.html',
             'app-config': 'app/config.json',
             'app-style': 'assets/style',
             protocol: 'app/lib/protocol'
@@ -23,7 +23,7 @@
 
     let require_list = [
         // 模板相关
-        'data!app-testApi', 'data!app-config',
+        'data!app-main', 'data!app-config',
         // 插件相关
         'vue', 'axios', 'YunDingOnlineSDK',
         'element-ui', 'css!app-style', 'css!element-ui-theme'
