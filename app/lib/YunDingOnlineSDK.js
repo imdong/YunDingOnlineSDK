@@ -70,8 +70,10 @@ define(['protocol'], function (Protocol) {
         // WebSocket 链接对象
         this.socket = null;
 
-        // 玩家信息都存在这里
+        // 玩家信息都存在这里 渲染视图请读取这里
         this.user_info = {};
+
+        // 登录 Token 我猜你不会偷这个吧?
         this.token = null;
 
         // 生成服务器链接地址
@@ -102,16 +104,91 @@ define(['protocol'], function (Protocol) {
         this.serverProtos = {};
         this.clientProtos = {};
 
-        // 握手成功的回调
-        this.initCallback = null;
-        this.callbacks = [];    // seqId
-        this.callRoutes = [];
+        // 一些无法命名的回调
+        this.initCallback = null;   // 初始化完毕的回调
+        this.callbacks = [];        // 根据 SeqId 来区分回调(如果有)
+        this.callRoutes = [];       // 和上面一样 只是区分 Route
 
         // 注册各路由的回调钩子
         this.hookHandlers = {
+            "onAdd": [],
+            "onLeave": [],
+            "onChatMsg": [],
+            "chat.chatHandler.send": [],
+            "connector.entryHandler.enter": [],
+            "connector.fationHandler.applyForFation": [],
+            "connector.fationHandler.closeUserTask": [],
+            "connector.fationHandler.createFation": [],
+            "connector.fationHandler.donateFationFunds": [],
+            "connector.fationHandler.doneFationApply": [],
+            "connector.fationHandler.getFationApply": [],
+            "connector.fationHandler.getFationList": [],
+            "connector.fationHandler.getFationTask": [],
+            "connector.fationHandler.initFation": [],
+            "connector.fationHandler.leaveFation": [],
+            "connector.fationHandler.showFationUserList": [],
+            "connector.fationHandler.upFation": [],
+            "connector.fationHandler.upFationUserSkill": [],
+            "connector.fationHandler.upUserFationLevel": [],
             "connector.loginHandler.login": [
                 CoreHooks.onLoginGame
-            ]
+            ],
+            "connector.playerHandler.byGoodsToSystem": [],
+            "connector.playerHandler.byPalyerGoods": [],
+            "connector.playerHandler.getCopyTask": [],
+            "connector.playerHandler.getPlayerSellGoods": [],
+            "connector.playerHandler.init": [],
+            "connector.playerHandler.move": [],
+            "connector.playerHandler.moveToNewMap": [],
+            "connector.playerHandler.nextMap": [],
+            "connector.playerHandler.payUserTask": [],
+            "connector.playerHandler.sellGoods": [],
+            "connector.playerHandler.sendMsg": [],
+            "connector.playerHandler.wearUserEquipment": [],
+            "connector.systemHandler.getRankList": [],
+            "connector.systemHandler.getSystemSellGoods": [],
+            "connector.systemHandler.getSystemTask": [],
+            "connector.teamHandler.addTeam": [],
+            "connector.teamHandler.createdTeam": [],
+            "connector.teamHandler.getAllCombatScreen": [],
+            "connector.teamHandler.getTeamList": [],
+            "connector.teamHandler.leaveTeam": [],
+            "connector.teamHandler.roundOperating": [],
+            "connector.teamHandler.showMyTeam": [],
+            "connector.teamHandler.startCombat": [],
+            "connector.teamHandler.switchCombatScreen": [],
+            "connector.userHandler.addUserPetSkill": [],
+            "connector.userHandler.allSellGoods": [],
+            "connector.userHandler.allocationPoint": [],
+            "connector.userHandler.fbProcess": [],
+            "connector.userHandler.fitPet": [],
+            "connector.userHandler.getMyFb": [],
+            "connector.userHandler.getMyGoods": [],
+            "connector.userHandler.getMyPet": [],
+            "connector.userHandler.getMyPetSkillGoods": [],
+            "connector.userHandler.getMySkill": [],
+            "connector.userHandler.getMyTitle": [],
+            "connector.userHandler.getMylogs": [],
+            "connector.userHandler.getUserEqs": [],
+            "connector.userHandler.getUserTask": [],
+            "connector.userHandler.makeGoods": [],
+            "connector.userHandler.playUserPet": [],
+            "connector.userHandler.polyLin": [],
+            "connector.userHandler.repairUserArms": [],
+            "connector.userHandler.resetAttribute": [],
+            "connector.userHandler.selectMyTitle": [],
+            "connector.userHandler.sellGoods": [],
+            "connector.userHandler.shelfMyGoods": [],
+            "connector.userHandler.turnIntoPet": [],
+            "connector.userHandler.upPlayerLevel": [],
+            "connector.userHandler.upUserPetLevel": [],
+            "connector.userHandler.updateUserPrice": [],
+            "connector.userHandler.useGoods": [],
+            "connector.userHandler.userInfo": [],
+            "connector.userHandler.wbt": [],
+            "connector.userHandler.xyDuiHuan": [],
+            "connector.userHandler.xyUpdate": [],
+            "gate.gateHandler.queryEntry": []
         };
     }
 
@@ -138,9 +215,27 @@ define(['protocol'], function (Protocol) {
      * @param {string}   position   用于 触发时机 暂不可用
      */
     GameApi.prototype.regHookHandler = function (route, cb, position) {
+        // 检查 route 和 cn 是否有效
+        if (!this.hookHandlers[route] || 'function' != typeof cb) {
+            return false;
+        }
 
+        // 如果有 Mark 就尝试去重
+        let cbMark = cb.hookMark || null;
+        if (cbMark && 'object' == typeof this.hookHandlers[route]) {
+            for (let i = 0; i < this.hookHandlers[route].length; i++) {
+                const cb_item = this.hookHandlers[route][i];
+                if (cb_item.hookMark && cbMark == cb_item.hookMark) {
+                    return cb_item;
+                }
+            }
+        }
+
+        // 追加到结果
+        this.hookHandlers[route].push(cb);
+
+        return true;
     }
-
 
     /**
      * 启动实例
@@ -409,20 +504,18 @@ define(['protocol'], function (Protocol) {
      * @param {*} data
      */
     GameApi.prototype.onData = function (data) {
-        let msg = Message.decode(data),
-            route = null;
+        let msg = Message.decode(data);
 
         // 从发包请求中取回 Route
         if (!msg.route && msg.id && this.callRoutes[msg.id]) {
-            msg.route = route = this.callRoutes[msg.id];
+            msg.route = this.callRoutes[msg.id];
         }
 
         // 解码 Body
         msg.body = JSON.parse(Protocol.strdecode(msg.body));
-        console.log('onData', msg);
 
         // 检查是否有回调
-        let cbMark = [];
+        let cbMark = [], is_call = false, is_bubble = true;
         if ('function' == typeof this.callbacks[msg.id]) {
             let cb = this.callbacks[msg.id];
             delete this.callbacks[msg.id];
@@ -430,13 +523,14 @@ define(['protocol'], function (Protocol) {
                 cbMark.push(cb.hookMark);
             }
 
-            cb.call(this, msg.body);
+            is_call = true;
+            is_bubble = !(cb.call(this, msg.body) === false);
         }
 
         // 检查钩子
-        if (route && 'object' == typeof this.hookHandlers[route]) {
-            for (let i = 0; i < this.hookHandlers[route].length; i++) {
-                const cb = this.hookHandlers[route][i];
+        if (is_bubble && msg.route && 'object' == typeof this.hookHandlers[msg.route]) {
+            for (let i = 0; i < this.hookHandlers[msg.route].length; i++) {
+                const cb = this.hookHandlers[msg.route][i];
                 if ('string' == typeof cb.hookMark) {
                     if (cbMark.indexOf(cb.hookMark) >= 0) {
                         continue;
@@ -444,8 +538,15 @@ define(['protocol'], function (Protocol) {
                     cbMark.push(cb.hookMark);
                 }
 
-                cb.call(this, msg.body);
+                is_call = true;
+                is_bubble = !(cb.call(this, msg.body) === false);
+                if (is_bubble) continue;
             }
+        }
+
+        // 如果没有人接收 就打印出来
+        if (!is_call) {
+            console.log('onData', is_call, msg);
         }
     };
 
@@ -511,7 +612,7 @@ define(['protocol'], function (Protocol) {
      */
     GameApi.prototype.onLogin = function (data) {
         if (data.code != RES_OK) {
-            console.log('onLogin', data.msg);
+            console.error('onLogin', data.msg);
             return;
         }
         console.log('onLogin', data)
@@ -532,7 +633,6 @@ define(['protocol'], function (Protocol) {
      * 使用 Token 登录游戏服务器
      */
     GameApi.prototype.loginToken = function () {
-        console.log('loginToken');
         let route = 'connector.loginHandler.login',
             data = {
                 email: this.user_info.email,
@@ -540,12 +640,554 @@ define(['protocol'], function (Protocol) {
             };
 
         // 先清空工作台
-        console.clear();
+        // console.clear();
 
         // 如果登录成功 则清空控制台
         this.sendMessage(data, route, () => {
             console.log('登录到游戏服务器成功', this);
         });
+    }
+
+    /**
+     * 仙蕴提交
+     */
+    GameApi.prototype.xyUpdate = function () {
+        this.sendMessage({}, "connector.userHandler.xyUpdate");
+    }
+
+    /**
+     * 查看我的日志
+     */
+    GameApi.prototype.getMylogs = function () {
+        this.sendMessage({}, "connector.userHandler.getMylogs");
+    }
+
+    /**
+     * 获取我的法宝
+     */
+    GameApi.prototype.getMyFb = function () {
+        this.sendMessage({}, "connector.userHandler.getMyFb");
+    }
+
+    /**
+     * 法宝点击
+     * @param type 1 升星 2共生 3养灵 4佩戴
+     * @param id
+     */
+    GameApi.prototype.fbProcess = function (type, id) {
+        this.sendMessage({
+            type, id
+        }, "connector.userHandler.fbProcess");
+    }
+
+
+    /**
+     * 移动
+     * @param x     横坐标
+     * @param mid   地图id
+     */
+    GameApi.prototype.move = function (x, mid) {
+        this.sendMessage({
+            x: x,
+            mid: mid
+        }, "connector.playerHandler.move");
+    }
+
+    /**
+     * 切换地图
+     * @param type 0 | 1
+     */
+    GameApi.prototype.nextMap = function (type) {
+        this.sendMessage({
+            type
+        }, "connector.playerHandler.nextMap");
+    }
+
+    /**
+     * 移动至新地图
+     */
+    GameApi.prototype.moveToNewMap = function (mid) {
+        this.sendMessage({
+            mid: mid
+        }, "connector.playerHandler.moveToNewMap");
+    }
+
+    /**
+     * 创建队伍
+     */
+    GameApi.prototype.createdTeam = function (mid) {
+        this.sendMessage({
+            mid: mid
+        }, "connector.teamHandler.createdTeam");
+    }
+
+    /**
+     * 离开队伍
+     */
+    GameApi.prototype.leaveTeam = function () {
+        this.sendMessage({}, "connector.teamHandler.leaveTeam");
+    }
+
+    /**
+     * 回合操作
+     *
+     * @param type      类型 捕捉 1001 技能 1
+     * @param skill     操作 技能
+     * @param attack_id 目标
+     * @param tid       队伍ID?
+     */
+    GameApi.prototype.roundOperating = function (type, skill, attack_id, mtid) {
+        this.sendMessage({
+            type: type,
+            parm: skill,
+            attack_id: attack_id,
+            tid: mtid
+        }, "connector.teamHandler.roundOperating");
+    }
+
+    /**
+     * 初始我得物品
+     */
+    GameApi.prototype.getMyGoods = function (page) {
+        this.sendMessage({
+            page
+        }, "connector.userHandler.getMyGoods");
+    }
+
+    /**
+     * 出售物品
+     */
+    GameApi.prototype.sellGoods = function (ugid, price, count) {
+        this.sendMessage({
+            ugid: ugid,
+            game_gold: price,
+            count
+        }, "connector.playerHandler.sellGoods");
+    }
+
+    /**
+     * 选择我的称号
+     */
+    GameApi.prototype.selectMyTitle = function (index) {
+        this.sendMessage({
+            index
+        }, "connector.userHandler.selectMyTitle");
+    }
+
+    /**
+     * 称号弹框
+     */
+    GameApi.prototype.getMyTitle = function () {
+        this.sendMessage({}, "connector.userHandler.getMyTitle");
+    }
+
+    // /**
+    //  * 未知 被禁用
+    //  */
+    // GameApi.prototype.sellGoods = function (id, price, count) {
+    //     this.sendMessage({
+    //         ugid: id,
+    //         game_gold: price,
+    //         count
+    //     }, "connector.playerHandler.sellGoods");
+    // }
+
+    /**
+     * 初始我得宠物
+     */
+    GameApi.prototype.getMyPet = function () {
+        this.sendMessage({}, "connector.userHandler.getMyPet");
+    }
+
+    /**
+     * 挖宝图
+     */
+    GameApi.prototype.wbt = function (ugid) {
+        this.sendMessage({
+            ugid
+        }, "connector.userHandler.wbt");
+    }
+
+    /**
+     * 初始我得技能
+     */
+    GameApi.prototype.getMySkill = function () {
+        this.sendMessage({}, "connector.userHandler.getMySkill");
+    }
+
+    /**
+     * 修炼装备
+     */
+    GameApi.prototype.repairUserArms = function (type) {
+        this.sendMessage({
+            type
+        }, "connector.userHandler.repairUserArms");
+    }
+
+    /**
+     * 使用物品
+     */
+    GameApi.prototype.useGoods = function (gid) {
+        this.sendMessage({
+            gid
+        }, "connector.userHandler.useGoods");
+    }
+
+    /**
+     * 佩戴拆卸装备
+     */
+    GameApi.prototype.wearUserEquipment = function (ueid) {
+        this.sendMessage({
+            ueid
+        }, "connector.playerHandler.wearUserEquipment");
+    }
+
+    /**
+     * 完成任务
+     */
+    GameApi.prototype.payUserTask = function (utid) {
+        this.sendMessage({
+            utid
+        }, "connector.playerHandler.payUserTask");
+    }
+
+    /**
+     * 初始我得召唤兽
+     */
+    GameApi.prototype.getMyPet = function () {
+        this.sendMessage({}, "connector.userHandler.getMyPet");
+    }
+
+    /**
+     * 幻化宠物
+     */
+    GameApi.prototype.turnIntoPet = function (pid) {
+        this.sendMessage({
+            pid
+        }, "connector.userHandler.turnIntoPet");
+    }
+
+    /**
+     * 初始系统中出售物品
+     */
+    GameApi.prototype.getSystemSellGoods = function (pageIndex) {
+        this.sendMessage({
+            pageIndex
+        }, "connector.systemHandler.getSystemSellGoods");
+    }
+
+    /**
+     * 取回到背包
+     */
+    GameApi.prototype.shelfMyGoods = function (id) {
+        this.sendMessage({
+            id: id
+        }, "connector.userHandler.shelfMyGoods");
+    }
+
+    /**
+     * 初始仙坊集市
+     */
+    GameApi.prototype.getPlayerSellGoods = function (pageIndex, type) {
+        this.sendMessage({
+            pageIndex: pageIndex ? pageIndex : 1,
+            select: type
+        }, "connector.playerHandler.getPlayerSellGoods");
+    }
+
+    /**
+     * 购买玩家物品
+     */
+    GameApi.prototype.byPalyerGoods = function (id, type) {
+        this.sendMessage({
+            usgid: id, type
+        }, "connector.playerHandler.byPalyerGoods");
+    }
+
+    /**
+     * 购买系统物品
+     */
+    GameApi.prototype.byGoodsToSystem = function (id, type) {
+        this.sendMessage({
+            id, type
+        }, "connector.playerHandler.byGoodsToSystem");
+    }
+
+    /**
+     * 初始任务中心
+     */
+    GameApi.prototype.getSystemTask = function () {
+        this.sendMessage({}, "connector.systemHandler.getSystemTask");
+    }
+
+    /**
+     * 合成物品
+     */
+    GameApi.prototype.makeGoods = function (selectGoodsArr) {
+        this.sendMessage({
+            arr: selectGoodsArr
+        }, "connector.userHandler.makeGoods");
+    }
+
+    /**
+     * 分解物品
+     */
+    GameApi.prototype.sellGoods = function (selectGoodsArr) {
+        this.sendMessage({
+            arr: selectGoodsArr
+        }, "connector.userHandler.sellGoods");
+    }
+
+    /**
+     * 出战宠物
+     */
+    GameApi.prototype.playUserPet = function (id, status) {
+        this.sendMessage({
+            pid: id,
+            status
+        }, "connector.userHandler.playUserPet");
+    }
+
+    /**
+     * 升级宠物  type==1升级  type==2分配潜力 type==3放生
+     */
+    GameApi.prototype.upUserPetLevel = function (pid, type, point) {
+        let parms = { pid: pid, type };
+        if (type == 2) {
+            point = point || {};
+            Object.assign(parms, {
+                str: point.str || null,
+                int: point.int || null,
+                agi: point.agi || null,
+                vit: point.vit || null,
+                con: point.con || null
+            });
+        }
+        this.sendMessage(parms, "connector.userHandler.upUserPetLevel");
+    }
+
+    /**
+     * 发送消息
+     */
+    GameApi.prototype.send = function (send_channel, send_msg) {
+        this.sendMessage({
+            send_channel,
+            send_msg
+        }, "chat.chatHandler.send");
+    }
+
+    /**
+     * 保存/分配属性点
+     */
+    GameApi.prototype.allocationPoint = function (str, int, agi, vit, con) {
+        this.sendMessage({
+            str: str,
+            int: int,
+            agi: agi,
+            vit: vit,
+            con: con
+        }, "connector.userHandler.allocationPoint");
+    }
+
+    /**
+     * 获取我得装备列表
+     */
+    GameApi.prototype.getUserEqs = function () {
+        this.sendMessage({}, "connector.userHandler.getUserEqs");
+    }
+
+    /**
+     * 更新玩家货币
+     */
+    GameApi.prototype.updateUserPrice = function () {
+        this.sendMessage({}, "connector.userHandler.updateUserPrice");
+    }
+
+    /**
+     * 显示我的团队
+     */
+    GameApi.prototype.showMyTeam = function () {
+        this.sendMessage({ is_show }, "connector.teamHandler.showMyTeam");
+    }
+
+    /**
+     * 排行榜?
+     * @param type 1=等级 2=兽宠 3=神兵
+     */
+    GameApi.prototype.getRankList = function (type) {
+        this.sendMessage({ type }, "connector.systemHandler.getRankList");
+    }
+
+    /**
+     * 初始聚仙阁楼页面
+     */
+    GameApi.prototype.initFation = function () {
+        this.sendMessage({}, "connector.fationHandler.initFation");
+    }
+
+    /**
+     * 创建工会
+     */
+    GameApi.prototype.createFation = function (name) {
+        this.sendMessage({
+            name
+        }, "connector.fationHandler.createFation");
+    }
+
+    /**
+     * 申请工会
+     */
+    GameApi.prototype.applyForFation = function (fid) {
+        this.sendMessage({
+            fid
+        }, "connector.fationHandler.applyForFation");
+    }
+
+
+    /**
+     * 同意入会
+     * @param type              1=同意 2=拒绝
+     * @param fation_apply_id
+     */
+    GameApi.prototype.doneFationApply = function (type, fation_apply_id) {
+        this.sendMessage({
+            type, faid: fation_apply_id
+        }, "connector.fationHandler.doneFationApply");
+    }
+
+    /**
+     * 升降职位
+     */
+    GameApi.prototype.upUserFationLevel = function (type, uid) {
+        this.sendMessage({
+            type, uid
+        }, "connector.fationHandler.upUserFationLevel");
+    }
+
+    /**
+     * 打开工会列表
+     */
+    GameApi.prototype.getFationList = function () {
+        this.sendMessage({}, "connector.fationHandler.getFationList");
+    }
+
+    /**
+     * 查看申请
+     */
+    GameApi.prototype.getFationApply = function () {
+        this.sendMessage({}, "connector.fationHandler.getFationApply");
+    }
+
+    /**
+     * 查看工会人员
+     */
+    GameApi.prototype.showFationUserList = function () {
+        this.sendMessage({}, "connector.fationHandler.showFationUserList");
+    }
+
+    /**
+     * 脱离工会
+     */
+    GameApi.prototype.leaveFation = function () {
+        this.sendMessage({}, "connector.fationHandler.leaveFation");
+    }
+
+    /**
+     * 点技能
+     */
+    GameApi.prototype.upFationUserSkill = function () {
+        this.sendMessage({
+            type
+        }, "connector.fationHandler.upFationUserSkill");
+    }
+
+    /**
+     * 捐赠
+     */
+    GameApi.prototype.donateFationFunds = function () {
+        this.sendMessage({}, "connector.fationHandler.donateFationFunds");
+    }
+
+    /**
+     * 领取任务
+     */
+    GameApi.prototype.getFationTask = function () {
+        this.sendMessage({}, "connector.fationHandler.getFationTask");
+    }
+
+    /**
+     * 升级工会
+     */
+    GameApi.prototype.upFation = function (type) {
+        this.sendMessage({
+            type
+        }, "connector.fationHandler.upFation");
+    }
+
+    /**
+     * 聚灵
+     */
+    GameApi.prototype.polyLin = function (type) {
+        this.sendMessage({
+            type
+        }, "connector.userHandler.polyLin");
+    }
+
+    /**
+     * 放弃任务
+     */
+    GameApi.prototype.closeUserTask = function (tid) {
+        this.sendMessage({
+            tid: tid
+        }, "connector.fationHandler.closeUserTask");
+    }
+
+    /**
+     * 整理
+     */
+    GameApi.prototype.allSellGoods = function () {
+        this.sendMessage({}, "connector.userHandler.allSellGoods");
+    }
+
+    /**
+     * 重置属性
+     */
+    GameApi.prototype.resetAttribute = function () {
+        this.sendMessage({}, "connector.userHandler.resetAttribute");
+    }
+
+    /**
+     * 预览合宠
+     */
+    GameApi.prototype.getMyPet = function (a_id, b_id) {
+        this.sendMessage({
+            ids: a_id + "," + b_id
+        }, "connector.userHandler.getMyPet");
+    }
+
+    /**
+     * 确认合成
+     */
+    GameApi.prototype.fitPet = function (a_id, b_id) {
+        this.sendMessage({
+            ids: a_id + "," + b_id
+        }, "connector.userHandler.fitPet");
+    }
+
+    /**
+     * 添加用户宠物技能?
+     */
+    GameApi.prototype.addUserPetSkill = function (upid) {
+        this.sendMessage({
+            ugid, upid
+        }, "connector.userHandler.addUserPetSkill");
+    }
+
+    /**
+     * 获取我的宠物用品?
+     */
+    GameApi.prototype.getMyPetSkillGoods = function () {
+        this.sendMessage({}, "connector.userHandler.getMyPetSkillGoods");
     }
 
     /**
@@ -557,14 +1199,19 @@ define(['protocol'], function (Protocol) {
          * @param {*} data
          */
         onLoginGame: function (data) {
-            console.log('onLoginGame', data);
+            if (data.code != RES_OK) {
+                console.error('onLoginGame', data.msg);
+                return;
+            }
+
+            this.user_info = Object.assign(this.user_info, data.data);
         }
     }
-    // 给绑定 Mark
-    Object.keys(CoreHooks).forEach((name) => {
-        CoreHooks[name].prototype.hookMark = 'Core.' + name;
 
-    })
+    // 给Hook绑定 Mark
+    Object.keys(CoreHooks).forEach((name) => {
+        CoreHooks[name].hookMark = 'Core.' + name;
+    });
 
     return GameApi;
 });
