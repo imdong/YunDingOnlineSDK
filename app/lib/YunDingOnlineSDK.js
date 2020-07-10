@@ -1,4 +1,6 @@
 define(['protocol'], function (Protocol) {
+    // 调试模式
+    let DEBUG = false;
 
     /**
      * 一些常量
@@ -49,6 +51,52 @@ define(['protocol'], function (Protocol) {
     }
 
     /**
+     * Hooks 默认的
+     */
+    let CoreHooks = {
+        /**
+         * 登录游戏成功回调
+         * @param {*} data
+         */
+        onLoginGame: function (data) {
+            if (data.code != RES_OK) {
+                DEBUG && console.error('onLoginGame', data.msg);
+                return;
+            }
+
+            this.user_info = Object.assign(this.user_info, data.data);
+        },
+        /**
+         * 主要是用于保存数据
+         * @param {*} data
+         */
+        onSaveData: function (data) {
+            if (data.code != RES_OK) {
+                DEBUG && console.error('onLoginGame', data.msg);
+                return;
+            }
+
+            let datas = data.data || data,
+                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds'];
+            save_keys.forEach((key) => {
+                if (!datas[key]) {
+                    return;
+                }
+                this.user_info[key] = datas[key];
+
+                if (key == 'map') {
+                    this.user_info.mid = datas.map.id;
+                }
+            })
+        }
+    }
+
+    // 给Hook绑定 Mark
+    Object.keys(CoreHooks).forEach((name) => {
+        CoreHooks[name].hookMark = 'Core.' + name;
+    });
+
+    /**
      * YunDingXX Online API
      *
      * @param {object} config   配置信息
@@ -63,6 +111,11 @@ define(['protocol'], function (Protocol) {
         this.initConfig();
     };
 
+    // 设置调试模式
+    GameApi.isDEBUG = function () {
+        DEBUG = true;
+    }
+
     /**
      * 初始化配置信息
      */
@@ -71,6 +124,7 @@ define(['protocol'], function (Protocol) {
         this.socket = null;
 
         // 玩家信息都存在这里 渲染视图请读取这里
+        this.email = '';
         this.user_info = {};
 
         // 登录 Token 我猜你不会偷这个吧?
@@ -110,89 +164,94 @@ define(['protocol'], function (Protocol) {
         this.callRoutes = [];       // 和上面一样 只是区分 Route
 
         // 注册各路由的回调钩子
-        this.hookHandlers = {
-                "onAdd":                                      [],    //* 玩家上线?
-                "onLeave":                                    [],    //* 玩家离开
-                "onChatMsg":                                  [],    //* 收到消息
-                "chat.chatHandler.send":                      [],    //  发送消息
-                "connector.entryHandler.enter":               [],
-                "connector.fationHandler.applyForFation":     [],    //  申请工会
-                "connector.fationHandler.closeUserTask":      [],    //  放弃任务
-                "connector.fationHandler.createFation":       [],    //  创建工会
-                "connector.fationHandler.donateFationFunds":  [],    //  捐赠
-                "connector.fationHandler.doneFationApply":    [],    //  同意入会
-                "connector.fationHandler.getFationApply":     [],    //  查看申请
-                "connector.fationHandler.getFationList":      [],    //  打开工会列表
-                "connector.fationHandler.getFationTask":      [],    //  领取任务
-                "connector.fationHandler.initFation":         [],    //  初始聚仙阁楼页面
-                "connector.fationHandler.leaveFation":        [],    //  脱离工会
-                "connector.fationHandler.showFationUserList": [],    //  查看工会人员
-                "connector.fationHandler.upFation":           [],    //  升级工会
-                "connector.fationHandler.upFationUserSkill":  [],    //  点技能
-                "connector.fationHandler.upUserFationLevel":  [],    //  升降职位
-                "connector.loginHandler.login":               [      //  登录 Token
-                CoreHooks.onSaveData
-                ],
-                "connector.playerHandler.byGoodsToSystem":    [],    //  购买系统物品
-                "connector.playerHandler.byPalyerGoods":      [],    //  购买玩家物品
-                "connector.playerHandler.getCopyTask":        [],
-                "connector.playerHandler.getPlayerSellGoods": [],    //  初始仙坊集市
-                "connector.playerHandler.init":               [],
-                "connector.playerHandler.move":               [],    //  移动
-                "connector.playerHandler.moveToNewMap":       [      //  移动至新地图
-                CoreHooks.onSaveData
-                ],
-                "connector.playerHandler.nextMap":            [],    //  切换地图
-                "connector.playerHandler.payUserTask":        [],    //  完成任务
-                "connector.playerHandler.sellGoods":          [],
-                "connector.playerHandler.sendMsg":            [],
-                "connector.playerHandler.wearUserEquipment":  [],    //  佩戴拆卸装备
-                "connector.systemHandler.getRankList":        [],    //  排行榜
-                "connector.systemHandler.getSystemSellGoods": [],    //  初始系统中出售物品
-                "connector.systemHandler.getSystemTask":      [],    //  初始任务中心
-                "connector.teamHandler.addTeam":              [],
-                "connector.teamHandler.createdTeam":          [],    //  创建队伍
-                "connector.teamHandler.getAllCombatScreen":   [],
-                "connector.teamHandler.getTeamList":          [],
-                "connector.teamHandler.leaveTeam":            [],    //  离开队伍
-                "connector.teamHandler.roundOperating":       [],    //  回合操作
-                "connector.teamHandler.showMyTeam":           [],    //  显示我的团队
-                "connector.teamHandler.startCombat":          [],
-                "connector.teamHandler.switchCombatScreen":   [],
-                "connector.userHandler.addUserPetSkill":      [],    //  添加用户宠物技能
-                "connector.userHandler.allSellGoods":         [],    //  整理
-                "connector.userHandler.allocationPoint":      [],    //  保存/分配属性点
-                "connector.userHandler.fbProcess":            [],    //  法宝点击
-                "connector.userHandler.fitPet":               [],    //  确认合成
-                "connector.userHandler.getMyFb":              [],    //  获取我的法宝
-                "connector.userHandler.getMyGoods":           [],    //  初始我得物品
-                "connector.userHandler.getMyPet":             [],    //  初始我得宠物
-                "connector.userHandler.getMyPetSkillGoods":   [],    //  获取我的宠物用品
-                "connector.userHandler.getMySkill":           [],    //  初始我得技能
-                "connector.userHandler.getMyTitle":           [],    //  称号弹框
-                "connector.userHandler.getMylogs":            [],    //  查看我的日志
-                "connector.userHandler.getUserEqs":           [],    //  获取我得装备列表
-                "connector.userHandler.getUserTask":          [],
-                "connector.userHandler.makeGoods":            [],    //  合成物品
-                "connector.userHandler.playUserPet":          [],    //  出战宠物
-                "connector.userHandler.polyLin":              [],    //  聚灵
-                "connector.userHandler.repairUserArms":       [],    //  修炼装备
-                "connector.userHandler.resetAttribute":       [],    //  重置属性
-                "connector.userHandler.selectMyTitle":        [],    //  选择我的称号
-                "connector.userHandler.sellGoods":            [],
-                "connector.userHandler.shelfMyGoods":         [],    //  取回到背包
-                "connector.userHandler.turnIntoPet":          [],    //  幻化宠物
-                "connector.userHandler.upPlayerLevel":        [],
-                "connector.userHandler.upUserPetLevel":       [],    //  升级宠物
-                "connector.userHandler.updateUserPrice":      [],    //  更新玩家货币
-                "connector.userHandler.useGoods":             [],    //  使用物品
-                "connector.userHandler.userInfo":             [],
-                "connector.userHandler.wbt":                  [],    //  挖宝图
-                "connector.userHandler.xyDuiHuan":            [],
-                "connector.userHandler.xyUpdate":             [],    //  仙蕴提交
-                "gate.gateHandler.queryEntry": [] // *登录游戏
-        };
+        this.hookHandlers = GameApi.regHookHandlers;
     }
+
+    /**
+     * 用于批量提前注册，避免每次创建都要注册一次
+     */
+    GameApi.regHookHandlers = {
+        "onAdd": [],    //* 玩家上线?
+        "onLeave": [],    //* 玩家离开
+        "onChatMsg": [],    //* 收到消息
+        "chat.chatHandler.send": [],    //  发送消息
+        "connector.entryHandler.enter": [],
+        "connector.fationHandler.applyForFation": [],    //  申请工会
+        "connector.fationHandler.closeUserTask": [],    //  放弃任务
+        "connector.fationHandler.createFation": [],    //  创建工会
+        "connector.fationHandler.donateFationFunds": [],    //  捐赠
+        "connector.fationHandler.doneFationApply": [],    //  同意入会
+        "connector.fationHandler.getFationApply": [],    //  查看申请
+        "connector.fationHandler.getFationList": [],    //  打开工会列表
+        "connector.fationHandler.getFationTask": [],    //  领取任务
+        "connector.fationHandler.initFation": [],    //  初始聚仙阁楼页面
+        "connector.fationHandler.leaveFation": [],    //  脱离工会
+        "connector.fationHandler.showFationUserList": [],    //  查看工会人员
+        "connector.fationHandler.upFation": [],    //  升级工会
+        "connector.fationHandler.upFationUserSkill": [],    //  点技能
+        "connector.fationHandler.upUserFationLevel": [],    //  升降职位
+        "connector.loginHandler.login": [      //  登录 Token
+            CoreHooks.onSaveData
+        ],
+        "connector.playerHandler.byGoodsToSystem": [],    //  购买系统物品
+        "connector.playerHandler.byPalyerGoods": [],    //  购买玩家物品
+        "connector.playerHandler.getCopyTask": [],
+        "connector.playerHandler.getPlayerSellGoods": [],    //  初始仙坊集市
+        "connector.playerHandler.init": [],
+        "connector.playerHandler.move": [],    //  移动
+        "connector.playerHandler.moveToNewMap": [      //  移动至新地图
+            CoreHooks.onSaveData
+        ],
+        "connector.playerHandler.nextMap": [],    //  切换地图
+        "connector.playerHandler.payUserTask": [],    //  完成任务
+        "connector.playerHandler.sellGoods": [],
+        "connector.playerHandler.sendMsg": [],
+        "connector.playerHandler.wearUserEquipment": [],    //  佩戴拆卸装备
+        "connector.systemHandler.getRankList": [],    //  排行榜
+        "connector.systemHandler.getSystemSellGoods": [],    //  初始系统中出售物品
+        "connector.systemHandler.getSystemTask": [],    //  初始任务中心
+        "connector.teamHandler.addTeam": [],
+        "connector.teamHandler.createdTeam": [],    //  创建队伍
+        "connector.teamHandler.getAllCombatScreen": [],
+        "connector.teamHandler.getTeamList": [],
+        "connector.teamHandler.leaveTeam": [],    //  离开队伍
+        "connector.teamHandler.roundOperating": [],    //  回合操作
+        "connector.teamHandler.showMyTeam": [],    //  显示我的团队
+        "connector.teamHandler.startCombat": [],
+        "connector.teamHandler.switchCombatScreen": [],
+        "connector.userHandler.addUserPetSkill": [],    //  添加用户宠物技能
+        "connector.userHandler.allSellGoods": [],    //  整理
+        "connector.userHandler.allocationPoint": [],    //  保存/分配属性点
+        "connector.userHandler.fbProcess": [],    //  法宝点击
+        "connector.userHandler.fitPet": [],    //  确认合成
+        "connector.userHandler.getMyFb": [],    //  获取我的法宝
+        "connector.userHandler.getMyGoods": [],    //  初始我得物品
+        "connector.userHandler.getMyPet": [],    //  初始我得宠物
+        "connector.userHandler.getMyPetSkillGoods": [],    //  获取我的宠物用品
+        "connector.userHandler.getMySkill": [],    //  初始我得技能
+        "connector.userHandler.getMyTitle": [],    //  称号弹框
+        "connector.userHandler.getMylogs": [],    //  查看我的日志
+        "connector.userHandler.getUserEqs": [],    //  获取我得装备列表
+        "connector.userHandler.getUserTask": [],
+        "connector.userHandler.makeGoods": [],    //  合成物品
+        "connector.userHandler.playUserPet": [],    //  出战宠物
+        "connector.userHandler.polyLin": [],    //  聚灵
+        "connector.userHandler.repairUserArms": [],    //  修炼装备
+        "connector.userHandler.resetAttribute": [],    //  重置属性
+        "connector.userHandler.selectMyTitle": [],    //  选择我的称号
+        "connector.userHandler.sellGoods": [],
+        "connector.userHandler.shelfMyGoods": [],    //  取回到背包
+        "connector.userHandler.turnIntoPet": [],    //  幻化宠物
+        "connector.userHandler.upPlayerLevel": [],
+        "connector.userHandler.upUserPetLevel": [],    //  升级宠物
+        "connector.userHandler.updateUserPrice": [],    //  更新玩家货币
+        "connector.userHandler.useGoods": [],    //  使用物品
+        "connector.userHandler.userInfo": [],
+        "connector.userHandler.wbt": [],    //  挖宝图
+        "connector.userHandler.xyDuiHuan": [],
+        "connector.userHandler.xyUpdate": [],    //  仙蕴提交
+        "gate.gateHandler.queryEntry": [] // *登录游戏
+    };
 
     /**
      * 生成服务器链接地址
@@ -328,7 +387,7 @@ define(['protocol'], function (Protocol) {
      * @param {object} event
      */
     GameApi.prototype.onError = function (event) {
-        console.log('onError', event);
+        DEBUG && console.log('onError', event);
     };
 
     /**
@@ -337,7 +396,7 @@ define(['protocol'], function (Protocol) {
      * @param {object} event
      */
     GameApi.prototype.onClose = function (event) {
-        console.log('onClose', event);
+        DEBUG && console.log('onClose', event);
     };
 
     /**
@@ -372,7 +431,7 @@ define(['protocol'], function (Protocol) {
             let type = reqId ? Message.TYPE_REQUEST : Message.TYPE_NOTIFY;
 
             // 设置回调
-            if ('function' == typeof cb) {
+            if ('function' == typeof cb || 'string' == typeof cb) {
                 this.callbacks[reqId] = cb;
             }
 
@@ -399,7 +458,7 @@ define(['protocol'], function (Protocol) {
     GameApi.prototype.onHandshake = function (data) {
         // 解码数据
         data = JSON.parse(Protocol.strdecode(data));
-        console.log('onHandshake', data);
+        DEBUG && console.log('onHandshake', data);
 
         // 报错的话
         if (data.code === RES_OLD_CLIENT) {
@@ -496,7 +555,7 @@ define(['protocol'], function (Protocol) {
         if (gap > gapThreshold) {
             this.heartbeatTimeoutId = setTimeout(this.heartbeatTimeoutCb, gap);
         } else {
-            console.error('server heartbeat timeout');
+            DEBUG && console.error('server heartbeat timeout');
         }
     };
 
@@ -548,7 +607,7 @@ define(['protocol'], function (Protocol) {
 
         // 如果没有人接收 就打印出来
         if (!is_call) {
-            console.log('onData', msg.route, msg.body);
+            DEBUG && console.log('onData', msg.route, msg.body);
         }
     };
 
@@ -558,7 +617,7 @@ define(['protocol'], function (Protocol) {
      * @param {*} data
      */
     GameApi.prototype.onKick = function (data) {
-        console.log('onKick', data);
+        DEBUG && console.log('onKick', data);
     };
 
     //======= 下面是游戏事件封装区 =======//
@@ -614,10 +673,10 @@ define(['protocol'], function (Protocol) {
      */
     GameApi.prototype.onLogin = function (data) {
         if (data.code != RES_OK) {
-            console.error('onLogin', data.msg);
-            return;
+            DEBUG && console.error('onLogin', data.msg);
+            return true;
         }
-        console.log('onLogin', data)
+        DEBUG && console.log('onLogin', data)
 
         // 保存端口等信息
         this.config.gamePort = data.port;
@@ -646,7 +705,7 @@ define(['protocol'], function (Protocol) {
 
         // 如果登录成功 则清空控制台
         this.sendMessage(data, route, () => {
-            console.log('登录到游戏服务器成功', this);
+            DEBUG && console.log('登录到游戏服务器成功', this);
         });
     }
 
@@ -1173,41 +1232,6 @@ define(['protocol'], function (Protocol) {
     GameApi.prototype.getMyPetSkillGoods = function () {
         this.sendMessage({}, "connector.userHandler.getMyPetSkillGoods");
     }
-
-    /**
-     * Hooks 默认的
-     */
-    let CoreHooks = {
-        /**
-         * 登录游戏成功回调
-         * @param {*} data
-         */
-        onLoginGame: function (data) {
-            if (data.code != RES_OK) {
-                console.error('onLoginGame', data.msg);
-                return;
-            }
-
-            this.user_info = Object.assign(this.user_info, data.data);
-        },
-        /**
-         * 主要是用于保存数据
-         * @param {*} data
-         */
-        onSaveData: function (data) {
-            if (data.code != RES_OK) {
-                console.error('onLoginGame', data.msg);
-                return;
-            }
-
-            this.user_info = Object.assign(this.user_info, data.data);
-        }
-    }
-
-    // 给Hook绑定 Mark
-    Object.keys(CoreHooks).forEach((name) => {
-        CoreHooks[name].hookMark = 'Core.' + name;
-    });
 
     return GameApi;
 });
