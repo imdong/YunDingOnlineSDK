@@ -1,3 +1,54 @@
 body {
     margin: 0;
 }
+
+.e-top {
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1)
+}
+
+.e-top h1.e-title {
+    font-size: 14px;
+    line-height:1.5;
+    margin: 0;
+    text-align: center;
+}
+
+.el-main.e-body {
+    width: 1000px;
+    margin: 5px auto 0;
+    padding-bottom: 0px;
+    box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.1)
+}
+
+.e-main {
+    margin: auto;
+    text-align: center;
+}
+
+.e-main .el-main {
+    padding: 0;
+}
+
+.top-tools {
+    text-align: right;
+}
+
+.e-danger span {
+    color: #f56c6c;
+}
+
+.map-left, .map-right {
+    width: 150px;
+}
+
+.map-left {
+    text-align: left;
+}
+
+.map-right {
+    text-align: right;
+}
+
+.map-left a, .map-right a {
+    display: block;
+}
