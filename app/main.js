@@ -142,12 +142,6 @@
             }
         });
 
-        // 默认测试 用户名
-        app.login_form = {
-            email: 'test2',
-            password: '123456'
-        }
-
         // 暴露到全局
         exports.app = app;
         exports.GameApi = GameApi;
