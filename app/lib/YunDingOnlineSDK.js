@@ -77,7 +77,7 @@ define(['protocol'], function (Protocol) {
             }
 
             let datas = data.data || data,
-                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds'];
+                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds', 'team', 'screens', 'screens'];
             save_keys.forEach((key) => {
                 if (!datas[key]) {
                     return;
@@ -174,6 +174,9 @@ define(['protocol'], function (Protocol) {
         "onAdd": [],    //* 玩家上线?
         "onLeave": [],    //* 玩家离开
         "onChatMsg": [],    //* 收到消息
+        "onMyTeamReload": [ // 重新载入队伍
+            CoreHooks.onSaveData
+        ],
         "chat.chatHandler.send": [],    //  发送消息
         "connector.entryHandler.enter": [],
         "connector.fationHandler.applyForFation": [],    //  申请工会
@@ -210,10 +213,12 @@ define(['protocol'], function (Protocol) {
         "connector.systemHandler.getRankList": [],    //  排行榜
         "connector.systemHandler.getSystemSellGoods": [],    //  初始系统中出售物品
         "connector.systemHandler.getSystemTask": [],    //  初始任务中心
-        "connector.teamHandler.addTeam": [],
+        "connector.teamHandler.addTeam": [],    // 加入队伍
         "connector.teamHandler.createdTeam": [],    //  创建队伍
         "connector.teamHandler.getAllCombatScreen": [],
-        "connector.teamHandler.getTeamList": [],
+        "connector.teamHandler.getTeamList": [  // 获取队伍列表
+            CoreHooks.onSaveData
+        ],
         "connector.teamHandler.leaveTeam": [],    //  离开队伍
         "connector.teamHandler.roundOperating": [],    //  回合操作
         "connector.teamHandler.showMyTeam": [],    //  显示我的团队
@@ -659,6 +664,7 @@ define(['protocol'], function (Protocol) {
         // 设置握手回调
         this.initCallback = function () {
             // 尝试保存账号
+            this.email = email;
             this.user_info.email = email;
             // 设置消息回调
             this.sendMessage(data, route, this.onLogin);
@@ -774,12 +780,30 @@ define(['protocol'], function (Protocol) {
     }
 
     /**
+     * 获取队伍列表
+     */
+    GameApi.prototype.getTeamList = function (mid) {
+        this.sendMessage({
+            mid: mid
+        }, "connector.teamHandler.getTeamList");
+    }
+
+    /**
      * 创建队伍
      */
     GameApi.prototype.createdTeam = function (mid) {
         this.sendMessage({
             mid: mid
         }, "connector.teamHandler.createdTeam");
+    }
+
+    /**
+     * 加入队伍
+     */
+    GameApi.prototype.addTeam = function (tid) {
+        this.sendMessage({
+            tid: tid
+        }, "connector.teamHandler.addTeam");
     }
 
     /**
