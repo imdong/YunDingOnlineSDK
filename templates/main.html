@@ -51,7 +51,7 @@
                         </el-table-column>
                         <el-table-column prop="map" label="地图" width="80">
                             <template slot-scope="scope" v-if="scope.row.map">
-                                <el-popover trigger="hover" placement="top">
+                                <el-popover trigger="hover" placement="right">
                                     <div class="map-left">
                                         <el-link v-for="item in scope.row.map.up" :map-id="item" v-bind:key="item.id"
                                             @click="moveToNewMap(scope.row, item)">
@@ -66,18 +66,77 @@
                                             <i class="el-icon-arrow-right"></i>
                                         </el-link>
                                     </div>
-
                                     <div slot="reference" class="name-wrapper">
                                         {{ scope.row.map.name }}
                                     </div>
                                 </el-popover>
                             </template>
                         </el-table-column>
-                        <el-table-column prop="address" label="地址">
+                        <el-table-column prop="team" label="队伍" width="100">
+                            <template slot-scope="scope" v-if="scope.row.map">
+                                <el-popover trigger="hover" placement="right" title="队伍操作">
+                                    <el-row>
+                                        <el-button v-if="!scope.row.team" @click="createdTeam(scope.row)" type="primary"
+                                            size="mini" plain>创建队伍
+                                        </el-button>
+                                        <el-button v-if="scope.row.team" @click="leaveTeam(scope.row)" type="warning"
+                                            size="mini" plain>离开队伍
+                                        </el-button>
+                                        <el-switch v-model="scope.row.fighting" active-text="开始战斗">
+                                            开始战斗
+                                        </el-switch>
+                                    </el-row>
+                                    <el-row v-if="!scope.row.team">
+                                        <el-table :data="scope.row.teams" border style="width: 100%; margin-top: 5px;"
+                                            size="mini">
+                                            <el-table-column prop="status" width="37">
+                                                <template slot-scope="scope">
+                                                    <i v-if="scope.row.start_bat_at && (new Date().getTime()) - (new Date(scope.row.start_bat_at).getTime()) <= 180000"
+                                                        class="ali-icon icon-zhandouzuozhan"
+                                                        :title="scope.row.start_bat_at" style="color: #f56c6c;"></i>
+                                                    <i v-else class="ali-icon icon-xiuxiankafeiyule"
+                                                        :title="scope.row.start_bat_at" style="color: #67c23a;"></i>
+                                                </template>
+                                            </el-table-column>
+                                            <el-table-column prop="combat.name" label="场景" width="100">
+                                            </el-table-column>
+                                            <el-table-column prop="leader.nickname" label="队长" width="100">
+                                            </el-table-column>
+                                            <el-table-column prop="" label="人数" width="50">
+                                                <template slot-scope="scope_users">
+                                                    {{ scope_users.row.users.length }} / 5
+                                                </template>
+                                            </el-table-column>
+                                            <el-table-column prop="address" label="加入">
+                                                <template slot="header" slot-scope="scope_team">
+                                                    <el-button type="primary" plain size="mini"
+                                                        @click="getTeamList(scope.row)">刷新</el-button>
+                                                </template>
+                                                <template slot-scope="scope_team">
+                                                    <el-button size="mini" plain
+                                                        @click="addTeam(scope.row, scope_team.row)">加入</el-button>
+                                                </template>
+                                            </el-table-column>
+                                        </el-table>
+                                    </el-row>
+                                    <div slot="reference" class="name-wrapper">
+                                        <el-tag v-if="!scope.row.team" type="danger" size="mini">不在队伍中</el-tag>
+                                        <span v-if="scope.row.team">{{ scope.row.team.leader }}</span>
+                                    </div>
+                                </el-popover>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="address" label="消息">
                         </el-table-column>
                         <el-table-column fixed="right" label="操作" width="100">
                             <template slot-scope="scope">
-                                <el-button type="text" size="small" @click="view(scope.row)">查看</el-button>
+                                <el-popover ref="view" placement="left" :title="'操作面板 ('+scope.row.email+')'"
+                                    trigger="hover">
+                                    <el-button type="text" size="mini" class="e-danger" @click="view(scope.row)">删除
+                                    </el-button>
+                                </el-popover>
+
+                                <el-button type="text" size="small" v-popover:view>操作</el-button>
                                 <el-button type="text" size="mini" class="e-danger" @click="view(scope.row)">删除
                                 </el-button>
                             </template>
@@ -86,12 +145,10 @@
                 </el-row>
             </el-main>
             <el-footer height="22px">
-                <span>
-                    &copy;
-                    <el-link href="https://www.qs5.org">青石坞</el-link>
-                    by <el-link href="https://github.com/imdong/YunDingOnlineSDK">Github@YunDingOnlineSDK
-                    </el-link>.
-                </span>
+                &copy;
+                <el-link href="https://www.qs5.org">青石坞</el-link>
+                by <el-link href="https://github.com/imdong/YunDingOnlineSDK">Github@YunDingOnlineSDK
+                </el-link>.
             </el-footer>
         </el-container>
     </el-main>

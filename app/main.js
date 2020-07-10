@@ -8,9 +8,11 @@
             ELEMENT: 'https://cdn.jsdelivr.net/npm/element-ui@2.13.2/lib/index',
             'element-ui-theme': 'https://cdn.jsdelivr.net/npm/element-ui@2.13.2/lib/theme-chalk/index',
             YunDingOnlineSDK: 'app/lib/YunDingOnlineSDK',
+            regHooks: 'app/regHooks',
             'app-main': 'templates/main.html',
             'app-config': 'app/config.json',
             'app-style': 'assets/style',
+            'ali-icon': '//at.alicdn.com/t/font_1936453_g8yfzj2joju',   // 阿里的 icon 图标
             protocol: 'app/lib/protocol'
         },
         map: {
@@ -25,55 +27,15 @@
         // 模板相关
         'data!app-main', 'data!app-config',
         // 插件相关
-        'YunDingOnlineSDK', 'vue', 'axios', 'ELEMENT',
+        'YunDingOnlineSDK', 'vue', 'axios', 'ELEMENT', 'regHooks',
         // 额外样式动态引用
-        'css!app-style', 'css!element-ui-theme'
+        'css!app-style', 'css!element-ui-theme', 'css!ali-icon'
     ];
 
     // 启动项目
-    requirejs(require_list, function (tpl, config, GameApi, Vue, axios, ELEMENT) {
+    requirejs(require_list, function (tpl, config, GameApi, Vue, axios, ELEMENT, regHooks) {
         // 手动注册 Element-UI 到 Vue
         ELEMENT.install(Vue);
-
-        // 创建空函数 屏蔽 onLeave onAdd 消息刷屏
-        let emptyCb = () => { };
-        emptyCb.hookMark = 'emptyCb';
-        GameApi.regHookHandlers['onLeave'].push(emptyCb);
-        GameApi.regHookHandlers['onAdd'].push(emptyCb);
-
-        // 接管登录成功的回调
-        let loginCb = function (data) {
-            let index = this.user_index,
-                email = this.email;
-
-            // 检查错误
-            if (data.code != 200) {
-                app.user_list[index].status = "登录失败";
-                app.user_list[index].status_msg = data.msg;
-                return;
-            }
-            // 登录成功
-            app.user_list[index].status = '登录成功';
-
-            // 没有数据就不在继续了
-            if ('object' != typeof data.data) {
-                return;
-            }
-            // 记录地图位置
-            app.$set(app.user_list[index], 'map', data.data.map);
-        }
-        loginCb.hookMark = "loginCb";
-        GameApi.regHookHandlers['gate.gateHandler.queryEntry'].push(loginCb);
-        GameApi.regHookHandlers['connector.loginHandler.login'].push(loginCb);
-
-        // 移动地图的返回
-        let moveToNewMapCb = function (data) {
-            // 更新地图位置
-            app.$set(app.user_list[this.user_index], 'map', data.map);
-            console.log('moveToNewMapCb', data);
-        };
-        moveToNewMapCb.hookMark = "moveToNewMapCb";
-        GameApi.regHookHandlers['connector.playerHandler.moveToNewMap'].push(moveToNewMapCb);
 
         // 创建 View
         let app = new Vue({
@@ -82,6 +44,7 @@
             data: {
                 login_form: {},
                 user_list: [],
+                tableData: [],
                 login_rules: {
                     // 账号不能重复
                     email: {
@@ -104,6 +67,9 @@
                 // 创建 game_list (不希望被 Vue 解析)
                 this.game_list = {};
                 this.config = config;
+
+                // 一定要马上将自己暴露给 regHook 里面
+                regHooks(this);
             },
             computed: {
                 nextMap: function (event) {
@@ -114,19 +80,21 @@
             methods: {
                 onAddUser: function (event) {
                     // 验证表单
-                    this.$refs['loginForm'].validate((valid) => {
-                        if (!valid) {
-                            return;
-                        }
+                    let valid = false;
+                    this.$refs['loginForm'].validate((_valid) => {
+                        valid = _valid;
                     });
+                    if (!valid) return;
 
+                    // 创建游戏对象
                     let game = new GameApi(),
                         email = this.login_form.email;
 
                     // 添加到用户列表
                     game.user_index = this.user_list.push({
                         email: email,
-                        status: '已添加'
+                        status: '已添加',
+                        teams: []
                     }) - 1;
 
                     // 登录账号
@@ -138,9 +106,37 @@
                 // 移动到新地图
                 moveToNewMap: function (row, mid) {
                     this.game_list[row.email].moveToNewMap(mid);
+                },
+                // 创建队伍
+                createdTeam: function (row) {
+                    this.game_list[row.email].createdTeam();
+                },
+                // 加入队伍
+                addTeam: function (row, item) {
+                    this.game_list[row.email].addTeam(item._id)
+                },
+                // 离开队伍
+                leaveTeam: function (row) {
+                    this.game_list[row.email].leaveTeam();
+                },
+                // 获取团队列表
+                getTeamList: function (row) {
+                    if (!row.isLogin) {
+                        return null;
+                    }
+                    console.log('getTeamList', row.email, row.map.id);
+                    this.game_list[row.email].getTeamList(row.map.id);
+                    return null;
                 }
+
             }
         });
+
+        // 测试账号
+        app.login_form = {
+            email: 'test2',
+            password: '123456'
+        };
 
         // 暴露到全局
         exports.app = app;
