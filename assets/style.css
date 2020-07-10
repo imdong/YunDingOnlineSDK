@@ -52,3 +52,8 @@ body {
 .map-left a, .map-right a {
     display: block;
 }
+
+.el-footer {
+    font-weight: 500;
+    font-size: 14px;
+}
