@@ -72,7 +72,7 @@ define(['protocol'], function (Protocol) {
          */
         onSaveData: function (data) {
             if (data.code != RES_OK) {
-                DEBUG && console.error('onLoginGame', data.msg);
+                DEBUG && console.error('onLoginGame', data.msg || data);
                 return;
             }
 
@@ -123,8 +123,12 @@ define(['protocol'], function (Protocol) {
         // WebSocket 链接对象
         this.socket = null;
 
+        // 用于标记自己要停止
+        this.isStop = false;
+
         // 玩家信息都存在这里 渲染视图请读取这里
         this.email = '';
+        this.password = ''; // 用于自动重连
         this.user_info = {};
 
         // 登录 Token 我猜你不会偷这个吧?
@@ -148,6 +152,7 @@ define(['protocol'], function (Protocol) {
         this.heartbeatId = null;
         this.heartbeatTimeoutId = null;
         this.heartbeatTimeout = 0;
+        this.xyUpdateIntervalId = 0;
 
         // 路由字典
         this.dict = {};
@@ -401,7 +406,14 @@ define(['protocol'], function (Protocol) {
      * @param {object} event
      */
     GameApi.prototype.onClose = function (event) {
-        DEBUG && console.log('onClose', event);
+        DEBUG && console.log('onClose', event, this.isStop);
+        if (this.isStop) {
+            return;
+        }
+
+        console.log('onClose login')
+        // 重连
+        this.login();
     };
 
     /**
@@ -625,6 +637,25 @@ define(['protocol'], function (Protocol) {
         DEBUG && console.log('onKick', data);
     };
 
+    /**
+     * 停止进程
+     */
+    GameApi.prototype.Stop = function () {
+        // 标记自己要停止了
+        this.isStop = true;
+
+        // 断开 WS 链接
+        this.socket.close();
+
+        // 停止心跳
+        if (this.heartbeatId) {
+            clearTimeout(this.heartbeatId)
+        }
+        if (this.heartbeatTimeoutId) {
+            clearTimeout(this.heartbeatTimeoutId);
+        }
+    }
+
     //======= 下面是游戏事件封装区 =======//
 
     /**
@@ -652,11 +683,13 @@ define(['protocol'], function (Protocol) {
      * @param {*} pwd
      * @param {*} code
      */
-    GameApi.prototype.login = function (email, pwd, code, is_r) {
-        let route = 'gate.gateHandler.queryEntry',
+    GameApi.prototype.login = function (_email, pwd, code, is_r) {
+        let email = _email || this.email,
+            password = pwd || this.password,
+            route = 'gate.gateHandler.queryEntry',
             data = {
                 login_email: email,
-                login_pwd: pwd,
+                login_pwd: password,
                 code: '',
                 is_r: true
             };
@@ -665,7 +698,9 @@ define(['protocol'], function (Protocol) {
         this.initCallback = function () {
             // 尝试保存账号
             this.email = email;
+            this.password = pwd;
             this.user_info.email = email;
+
             // 设置消息回调
             this.sendMessage(data, route, this.onLogin);
         }
@@ -690,6 +725,7 @@ define(['protocol'], function (Protocol) {
         this.token = data.token;
 
         // 断开登录链接 重新连接到游戏服务器
+        this.isStop = true; // 先标记停止 然后等下再开起来
         this.socket.close();
         this.gameServer = this.getSocketServer(data.port);
         this.initCallback = this.loginToken;
@@ -706,12 +742,26 @@ define(['protocol'], function (Protocol) {
                 token: this.token
             };
 
-        // 先清空工作台
-        // console.clear();
+        // 标记自己开工了
+        this.onClose = false;
 
-        // 如果登录成功 则清空控制台
-        this.sendMessage(data, route, () => {
-            DEBUG && console.log('登录到游戏服务器成功', this);
+        // 先清空工作台
+        // DEBUG && console.clear();
+
+        // 如果登录成功
+        this.sendMessage(data, route, (data) => {
+            if (data.code != RES_OK) {
+                DEBUG && console.error('登录到游戏服务器失败', data);
+                this.Stop();
+                return;
+            }
+
+            DEBUG && console.log('登录到游戏服务器成功', this, data);
+
+            // 开始定时提交仙蕴
+            this.xyUpdateIntervalId = setInterval(() => {
+                this.xyUpdate()
+            }, 60000);
         });
     }
 
