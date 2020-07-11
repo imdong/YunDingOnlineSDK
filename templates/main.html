@@ -36,10 +36,10 @@
 
                 <el-row>
                     <el-table :data="user_list" :border="true" style="width: 100%" height="calc(100vh - 125px)"
-                        size="mini" empty-text="还没有登录账号">
-                        <el-table-column prop="email" label="账号" width="100">
+                        size="mini" empty-text="还没有登录账号" :highlight-current-row="true">
+                        <el-table-column prop="email" label="账号" width="100" :sortable="true">
                         </el-table-column>
-                        <el-table-column prop="status" label="状态" width="80">
+                        <el-table-column prop="status" label="状态" width="80" :sortable="true">
                             <template slot-scope="scope">
                                 <el-popover trigger="hover" placement="top">
                                     <p>{{ scope.row.status_msg || scope.row.status }}</p>
@@ -137,7 +137,7 @@
                                 </el-popover>
 
                                 <el-button type="text" size="small" v-popover:view>操作</el-button>
-                                <el-button type="text" size="mini" class="e-danger" @click="view(scope.row)">删除
+                                <el-button type="text" size="mini" class="e-danger" @click="deleteUser(scope.row)">删除
                                 </el-button>
                             </template>
                         </el-table-column>
