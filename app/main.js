@@ -214,7 +214,7 @@
                                 data.my_reward = reward;
                             }
                         });
-                        data.die_arr.map((item) => {
+                        data.die_arr = data.die_arr.map((item) => {
                             return item.replace(/<[^>]+>/g, '');
                         })
                     }
