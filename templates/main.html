@@ -51,7 +51,10 @@
                             </template>
                         </el-table-column>
 
-                        <el-table-column prop="address" label="消息">
+                        <el-table-column prop="message" label="消息">
+                            <template slot-scope="scope">
+                                <yd-line-message :message="scope.row.message" />
+                            </template>
                         </el-table-column>
 
                         <el-table-column fixed="right" label="操作" width="100">
@@ -147,7 +150,9 @@
                 </el-button>
                 <el-button v-if="row.team" @click="leaveTeam(row.email)" type="warning" size="mini" plain>离开队伍
                 </el-button>
-                <el-switch v-if="row.team && (row.team.leader == row.email || row.team.users[0].email == row.email)" v-model="row.fighting" @change="startCombat(row.email, row.fighting, row.team.combat)" active-text="开始战斗">
+                <el-switch v-if="row.team && (row.team.leader == row.email || row.team.users[0].email == row.email)"
+                    v-model="row.fighting" @change="startCombat(row.email, row.fighting, row.team.combat)"
+                    active-text="开始战斗">
                     开始战斗
                 </el-switch>
             </el-row>
@@ -225,5 +230,24 @@
         <el-table-column prop="level" label="等级" width="45">
         </el-table-column>
     </el-table>
+</template>
 
+<template component-name="yd-line-message" props="message">
+    <el-row>
+        <template v-if="'object' == typeof message">
+            [{{ message.time }}]
+            <span v-if="message.win == 0">
+                {{'第' + message.round_num + '轮'}}
+                怪物死亡 [{{ message.die_arr.join(',') }}]
+            </span>
+            <span v-else-if="message.win == 1">
+                {{ message.win == 1 ? '胜' : '败' }},
+                经验 +{{ message.my_exp || 0 }}
+                奖励 [{{ message.my_reward ? message.my_reward.join(',') : '无' }}]
+            </span>
+        </template>
+        <template v-else>
+            {{ message || '暂无' }}
+        </template>
+    </el-row>
 </template>

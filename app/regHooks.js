@@ -196,16 +196,16 @@ define(['YunDingOnlineSDK'], function (GameApi) {
     // 战斗结束
     let onRoundBatEndCb = function (data) {
         // 开启新的战斗
-        if (app.getUser(this.email).fighting) {
+        if (app.getUser(this.email).fighting && data.data.win > 0) {
             this.startCombat(this.user_info.team.combat);
         }
         console.log('onRoundBatEndCb', data);
+
+        // 保存战斗消息
+        app.setMessage(this.email, data.data);
     }
     onRoundBatEndCb.hookMark = "regHooks.onRoundBatEndCb";
     GameApi.regHookHandlers['onRoundBatEnd'].push(onRoundBatEndCb);
-
-
-
 
     // 暴露一个接口 用来接收 app 对象
     return function (_app) {

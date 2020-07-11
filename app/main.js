@@ -149,7 +149,8 @@
                     this.user_list.push({
                         email: email,
                         status: '已添加',
-                        teams: []
+                        teams: [],
+                        message: '暂无'
                     });
 
                     // 登录账号
@@ -172,6 +173,50 @@
 
                     // 更新保存用户
                     this.saveStorageUser(row.email);
+                },
+                // 设置消息
+                setMessage: function (email, data) {
+                    let date = new Date();
+                    data.time = 'H:i:s'.replace(/[His]/g, (full) => {
+                        let str = '';
+                        switch (full) {
+                            case 'H':
+                                str = date.getHours();
+                                break;
+                            case 'i':
+                                str = date.getMinutes();
+                                break;
+                            case 's':
+                                str = date.getSeconds();
+                                break;
+                            default:
+                                break;
+                        }
+                        return str.toString().padStart(2, '0');
+                    })
+
+                    // 调整格式 方便渲染
+                    if (data.win >= 1) {
+                        data.exp.forEach((item) => {
+                            if (item.name == email) {
+                                data.my_exp = item.exp;
+                            }
+                        });
+                        data.player_reward.forEach((item) => {
+                            if (item.name == email) {
+                                let reward = [];
+                                item.goods.forEach((good) => {
+                                    reward.push(good.name);
+                                })
+                                if (reward.length == 0) {
+                                    reward.push('无')
+                                }
+                                data.my_reward = reward;
+                            }
+                        });
+                    }
+
+                    this.getUser(email).message = data;
                 }
             }
         });
