@@ -238,7 +238,7 @@
             [{{ message.time }}]
             <span v-if="message.win == 0">
                 {{'第' + message.round_num + '轮'}}
-                怪物死亡 [{{ message.die_arr.join(',') }}]
+                死亡 [{{ message.die_arr.join(',') }}]
             </span>
             <span v-else-if="message.win == 1">
                 {{ message.win == 1 ? '胜' : '败' }},

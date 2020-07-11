@@ -214,6 +214,9 @@
                                 data.my_reward = reward;
                             }
                         });
+                        data.die_arr.map((item) => {
+                            return item.replace(/<[^>]+>/g, '');
+                        })
                     }
 
                     this.getUser(email).message = data;
