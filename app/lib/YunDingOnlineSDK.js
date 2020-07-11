@@ -77,7 +77,7 @@ define(['protocol'], function (Protocol) {
             }
 
             let datas = data.data || data,
-                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds', 'team', 'screens', 'screens'];
+                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds', 'team', 'teams', 'screens'];
             save_keys.forEach((key) => {
                 if (!datas[key]) {
                     return;
@@ -182,6 +182,9 @@ define(['protocol'], function (Protocol) {
         "onMyTeamReload": [ // 重新载入队伍
             CoreHooks.onSaveData
         ],
+        "onRoundBatEnd": [ // 战斗结束
+
+        ],
         "chat.chatHandler.send": [],    //  发送消息
         "connector.entryHandler.enter": [],
         "connector.fationHandler.applyForFation": [],    //  申请工会
@@ -219,8 +222,12 @@ define(['protocol'], function (Protocol) {
         "connector.systemHandler.getSystemSellGoods": [],    //  初始系统中出售物品
         "connector.systemHandler.getSystemTask": [],    //  初始任务中心
         "connector.teamHandler.addTeam": [],    // 加入队伍
-        "connector.teamHandler.createdTeam": [],    //  创建队伍
-        "connector.teamHandler.getAllCombatScreen": [],
+        "connector.teamHandler.createdTeam": [ // //  创建队伍
+            CoreHooks.onSaveData
+        ],
+        "connector.teamHandler.getAllCombatScreen": [ // 获取战斗场景
+            CoreHooks.onSaveData
+        ],
         "connector.teamHandler.getTeamList": [  // 获取队伍列表
             CoreHooks.onSaveData
         ],
@@ -228,7 +235,7 @@ define(['protocol'], function (Protocol) {
         "connector.teamHandler.roundOperating": [],    //  回合操作
         "connector.teamHandler.showMyTeam": [],    //  显示我的团队
         "connector.teamHandler.startCombat": [],
-        "connector.teamHandler.switchCombatScreen": [],
+        "connector.teamHandler.switchCombatScreen": [], // 切换战斗场景
         "connector.userHandler.addUserPetSkill": [],    //  添加用户宠物技能
         "connector.userHandler.allSellGoods": [],    //  整理
         "connector.userHandler.allocationPoint": [],    //  保存/分配属性点
@@ -259,7 +266,9 @@ define(['protocol'], function (Protocol) {
         "connector.userHandler.userInfo": [],
         "connector.userHandler.wbt": [],    //  挖宝图
         "connector.userHandler.xyDuiHuan": [],
-        "connector.userHandler.xyUpdate": [],    //  仙蕴提交
+        "connector.userHandler.xyUpdate": [ // //  仙蕴提交
+            CoreHooks.onSaveData
+        ],
         "gate.gateHandler.queryEntry": [] // *登录游戏
     };
 
@@ -797,7 +806,6 @@ define(['protocol'], function (Protocol) {
         }, "connector.userHandler.fbProcess");
     }
 
-
     /**
      * 移动
      * @param x     横坐标
@@ -827,6 +835,23 @@ define(['protocol'], function (Protocol) {
         this.sendMessage({
             mid: mid
         }, "connector.playerHandler.moveToNewMap");
+    }
+
+    /**
+     * 获取战斗场景列表
+     */
+    GameApi.prototype.getAllCombatScreen = function () {
+        this.sendMessage({}, "connector.teamHandler.getAllCombatScreen");
+    }
+
+    /**
+     * 切换战斗场景
+     * @param {*} cbatid
+     */
+    GameApi.prototype.switchCombatScreen = function (cbatid) {
+        this.sendMessage({
+            cbatid: cbatid
+        }, "connector.teamHandler.switchCombatScreen");
     }
 
     /**
@@ -861,6 +886,13 @@ define(['protocol'], function (Protocol) {
      */
     GameApi.prototype.leaveTeam = function () {
         this.sendMessage({}, "connector.teamHandler.leaveTeam");
+    }
+
+    /**
+     * 开始战斗
+     */
+    GameApi.prototype.startCombat = function (cbatid) {
+        this.sendMessage({ cbatid: cbatid}, 'connector.teamHandler.startCombat');
     }
 
     /**
