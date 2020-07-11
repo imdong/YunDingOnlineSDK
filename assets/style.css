@@ -53,6 +53,23 @@ body {
     display: block;
 }
 
+.e-screens {
+    width: 285px;
+    margin-top: 5px;
+    height: 215px;
+}
+
+.e-screens > div {
+    padding: 8px 15px;
+}
+
+.e-screens button.el-button {
+    width: 75px;
+    margin: 6px 5px;
+    text-align: center;
+    padding: 7px 5px;
+}
+
 .el-footer {
     font-weight: 500;
     font-size: 14px;
