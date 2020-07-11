@@ -8,6 +8,7 @@
             ELEMENT: 'https://cdn.jsdelivr.net/npm/element-ui@2.13.2/lib/index',
             'element-ui-theme': 'https://cdn.jsdelivr.net/npm/element-ui@2.13.2/lib/theme-chalk/index',
             YunDingOnlineSDK: 'app/lib/YunDingOnlineSDK',
+            ydComponents: 'app/ydComponents',
             regHooks: 'app/regHooks',
             'app-template': 'templates/main.html',
             'app-config': 'app/config.json',
@@ -25,15 +26,13 @@
 
     let require_list = [
         // 模板相关
-        'data!app-template', 'data!app-config',
+        'data!app-config',
         // 插件相关
-        'YunDingOnlineSDK', 'vue', 'ELEMENT', 'regHooks', 'axios',
-        // 额外样式动态引用
-        'css!app-style', 'css!element-ui-theme', 'css!ali-icon'
+        'YunDingOnlineSDK', 'vue', 'ELEMENT', 'regHooks', 'ydComponents'
     ];
 
     // 启动项目
-    requirejs(require_list, function (template, config, GameApi, Vue, ELEMENT, regHooks, axios) {
+    requirejs(require_list, function (config, GameApi, Vue, ELEMENT, regHooks, ydComponents) {
         // 手动注册 Element-UI 到 Vue
         ELEMENT.install(Vue);
 
@@ -43,27 +42,10 @@
         // 创建 View
         let app = new Vue({
             el: '#app',
-            template: template,
+            template: ydComponents.main,
             data: {
-                login_form: {},
                 user_list: [],
                 tableData: [],
-                login_rules: {
-                    // 账号不能重复
-                    email: {
-                        validator: function (rule, value, callback) {
-                            // 检查用户是否存在
-                            app.user_list.forEach((item) => {
-                                if (item.email == value) {
-                                    callback(new Error('账号已经存在'));
-                                    return;
-                                }
-                            })
-                            callback();
-                        },
-                        trigger: 'blur'
-                    }
-                }
             },
             // 创建完毕回调
             mounted: function () {
@@ -75,6 +57,7 @@
 
                 // 一定要马上将自己暴露给 regHook 里面
                 regHooks(this);
+                ydComponents.setApp(this);
 
                 // 加载历史账号
                 let users = this.getStorageUser();
@@ -141,19 +124,12 @@
                  * 页面表单 添加用户
                  * @param {*} event
                  */
-                onAddUser: function (event) {
-                    // 验证表单
-                    let valid = false;
-                    this.$refs['loginForm'].validate((_valid) => {
-                        valid = _valid;
-                    });
-                    if (!valid) return;
-
+                onAddUser: function (email, passwd) {
                     // 保存账号密码
-                    this.saveStorageUser(this.login_form.email, this.login_form.password);
+                    this.saveStorageUser(email, passwd);
 
                     // 添加到列表并登陆
-                    this.addUser(this.login_form.email, this.login_form.password, true)
+                    this.addUser(email, passwd, true)
                 },
                 /**
                  * 添加一个用户到列表
@@ -192,35 +168,11 @@
                     this.user_list.splice(index, 1);
 
                     // TODO 需要完成 注销游戏 与销毁游戏对象的功能
+                    this.getGame(row.email).Stop();
 
                     // 更新保存用户
                     this.saveStorageUser(row.email);
-                },
-                // 移动到新地图
-                moveToNewMap: function (row, mid) {
-                    this.game_list[row.email].moveToNewMap(mid);
-                },
-                // 创建队伍
-                createdTeam: function (row) {
-                    this.game_list[row.email].createdTeam(row.map.id);
-                },
-                // 加入队伍
-                addTeam: function (row, item) {
-                    this.game_list[row.email].addTeam(item._id)
-                },
-                // 离开队伍
-                leaveTeam: function (row) {
-                    this.game_list[row.email].leaveTeam();
-                },
-                // 获取团队列表
-                getTeamList: function (row) {
-                    if (!row.isLogin) {
-                        return null;
-                    }
-                    this.game_list[row.email].getTeamList(row.map.id);
-                    return null;
                 }
-
             }
         });
 

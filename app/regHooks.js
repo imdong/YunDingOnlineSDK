@@ -10,7 +10,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
     // 接管登录成功的回调
     let loginCb = function (data) {
         let user = app.getUser(this.email);
-        console.log('loginCb', data);
+        console.log('loginCb', this.email, data);
 
         // 检查错误
         if (data.code == 500) {
@@ -40,6 +40,9 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
         // 记录地图位置
         app.$set(user, 'map', data.data.map);
+
+        // 获取一些初始化的信息
+        this.getTeamList(); // 获取地图队伍列表
     }
     loginCb.hookMark = "regHooks.loginCb";
     GameApi.regHookHandlers['gate.gateHandler.queryEntry'].push(loginCb);
@@ -51,7 +54,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
         // 更新地图位置
         app.$set(user, 'map', data.map);
-        console.log('moveToNewMapCb', data);
+        console.log('moveToNewMapCb', this.email, data);
     };
     moveToNewMapCb.hookMark = "regHooks.moveToNewMapCb";
     GameApi.regHookHandlers['connector.playerHandler.moveToNewMap'].push(moveToNewMapCb);
@@ -62,7 +65,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             app.$message.error(data.msg);
             return;
         }
-        console.log('createdTeamCb', data);
+        console.log('createdTeamCb', this.email, data);
 
         // 保存队长信息
         app.$set(app.getUser(this.email), 'team', {
@@ -81,7 +84,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             app.$message.error(data.msg);
             return;
         }
-        console.log('createdTeamCb', data);
+        console.log('createdTeamCb', this.email, data);
 
         app.$delete(app.getUser(this.email), 'team');
         app.$message('已离开队伍');
@@ -95,22 +98,12 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             app.$message.error(data.msg);
             return;
         }
-        console.log('addTeamCb', data);
+        console.log('addTeamCb', this.email, data);
 
-        //
-        let combat = data.data.combat,
-            leader = data.data.leader,
-            users = [];
-        for (let i = 0; i < data.data.users.length; i++) {
-            const user = data.data.users[i];
-            if (user._id == leader) {
-                leader = user.email;
-            }
-            users.push({
-                email: user.email,
-                level: user.level
-            })
-        }
+        // 整理结构
+        let combat = data.data.combat || null,
+            leader = data.data.users[0].nickname,
+            users = data.data.users;
 
         for (let i = 0; i < this.user_info.screens.length; i++) {
             const screen = this.user_info.screens[i];
@@ -135,7 +128,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             app.$message.error(data.msg);
             return;
         }
-        console.log('onMyTeamReloadCb', data);
+        console.log('onMyTeamReloadCb', this.email, data);
 
         let user = app.getUser(this.email);
 
@@ -162,7 +155,8 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
         app.$set(user, 'team', {
             leader: leader,
-            users: users
+            users: users,
+            combat: data.team.combat
         });
     }
     onMyTeamReloadCb.hookMark = "regHooks.onMyTeamReloadCb";
@@ -174,7 +168,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             app.$message.error(data.msg);
             return;
         }
-        console.log('getTeamListCb', data);
+        console.log('getTeamListCb', this.email, data);
 
         let user = app.getUser(this.email);
 
@@ -183,6 +177,35 @@ define(['YunDingOnlineSDK'], function (GameApi) {
     }
     getTeamListCb.hookMark = "regHooks.getTeamListCb";
     GameApi.regHookHandlers['connector.teamHandler.getTeamList'].push(getTeamListCb);
+
+    // 切换场景回调
+    let switchCombatScreenCb = function (data) {
+        if (data.code != 200) {
+            app.$message.error(data.msg);
+            return;
+        }
+        console.log('switchCombatScreenCb', this.email, data);
+
+        app.getUser(this.email).team.combat = app.getUser(this.email).team.to_combat;
+
+        app.$message.success("切换场景成功");
+    }
+    switchCombatScreenCb.hookMark = "regHooks.switchCombatScreenCb";
+    GameApi.regHookHandlers['connector.teamHandler.switchCombatScreen'].push(switchCombatScreenCb);
+
+    // 战斗结束
+    let onRoundBatEndCb = function (data) {
+        // 开启新的战斗
+        if (app.getUser(this.email).fighting) {
+            this.startCombat(this.user_info.team.combat);
+        }
+        console.log('onRoundBatEndCb', data);
+    }
+    onRoundBatEndCb.hookMark = "regHooks.onRoundBatEndCb";
+    GameApi.regHookHandlers['onRoundBatEnd'].push(onRoundBatEndCb);
+
+
+
 
     // 暴露一个接口 用来接收 app 对象
     return function (_app) {

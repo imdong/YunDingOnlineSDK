@@ -1,44 +1,31 @@
-<el-container>
-    <el-header height="100%" class="e-top">
-        <h1 class="e-title">云顶修仙 Online - 实用版</h1>
-    </el-header>
+<template component-name="yd-main">
+    <el-container>
+        <el-header height="100%" class="e-top">
+            <h1 class="e-title">云顶修仙 Online - 实用版</h1>
+        </el-header>
 
-    <el-main class="e-body">
-        <el-container class="e-main">
-            <el-main>
-                <el-row>
-                    <el-col :span="12" class="e-login">
-                        <el-form :model="login_form" :rules="login_rules" ref="loginForm" size="mini" status-icon
-                            label-position="right" label-width="50px">
-                            <el-col :span="4">
-                                <el-form-item label="添加账号" label-width="80px" style="font-weight: bolder;">
-                                </el-form-item>
-                            </el-col>
-                            <el-col :span="8">
-                                <el-form-item label="账号" prop="email">
-                                    <el-input v-model="login_form.email"></el-input>
-                                </el-form-item>
-                            </el-col>
-                            <el-col :span="8">
-                                <el-form-item label="密码">
-                                    <el-input type="password" v-model="login_form.password"></el-input>
-                                </el-form-item>
-                            </el-col>
-                            <el-col :span="4">
-                                <el-button type="primary" @click="onAddUser" size="mini">登录</el-button>
-                            </el-col>
-                        </el-form>
-                    </el-col>
-                    <el-col :span="12" class="top-tools">
-                        <el-button type="info" icon="el-icon-setting" size="mini">设置</el-button>
-                    </el-col>
-                </el-row>
+        <el-main class="e-body">
+            <el-container class="e-main">
+                <el-main>
+                    <!-- 第一行 登录 与 设置 -->
+                    <el-row>
+                        <el-col :span="12" class="e-login">
+                            <!-- 添加账号 登录表单 -->
+                            <yd-login-form @on-submit="onAddUser" />
+                        </el-col>
+                        <el-col :span="12" class="top-tools">
+                            <el-button type="info" icon="el-icon-setting" size="mini">设置</el-button>
+                        </el-col>
+                    </el-row>
 
-                <el-row>
+                    <!-- 用户列表 正文 -->
                     <el-table :data="user_list" :border="true" style="width: 100%" height="calc(100vh - 125px)"
                         size="mini" empty-text="还没有登录账号" :highlight-current-row="true">
+
                         <el-table-column prop="email" label="账号" width="100" :sortable="true">
+                            <!-- 未来这里会有用户信息的弹窗 -->
                         </el-table-column>
+
                         <el-table-column prop="status" label="状态" width="80" :sortable="true">
                             <template slot-scope="scope">
                                 <el-popover trigger="hover" placement="top">
@@ -49,85 +36,24 @@
                                 </el-popover>
                             </template>
                         </el-table-column>
+
                         <el-table-column prop="map" label="地图" width="80">
                             <template slot-scope="scope" v-if="scope.row.map">
-                                <el-popover trigger="hover" placement="right">
-                                    <div class="map-left">
-                                        <el-link v-for="item in scope.row.map.up" :map-id="item" v-bind:key="item.id"
-                                            @click="moveToNewMap(scope.row, item)">
-                                            <i class="el-icon-arrow-left"></i>
-                                            {{ config.maps[item].name }}
-                                        </el-link>
-                                    </div>
-                                    <div class="map-right">
-                                        <el-link v-for="item in scope.row.map.next" :map-id="item" v-bind:key="item.id"
-                                            @click="moveToNewMap(scope.row, item)">
-                                            {{ config.maps[item].name }}
-                                            <i class="el-icon-arrow-right"></i>
-                                        </el-link>
-                                    </div>
-                                    <div slot="reference" class="name-wrapper">
-                                        {{ scope.row.map.name }}
-                                    </div>
-                                </el-popover>
+                                <!-- 显示 选择地图的悬浮窗 -->
+                                <yd-line-map :row="scope.row" :maps="config.maps" />
                             </template>
                         </el-table-column>
-                        <el-table-column prop="team" label="队伍" width="100">
-                            <template slot-scope="scope" v-if="scope.row.map">
-                                <el-popover trigger="hover" placement="right" title="队伍操作">
-                                    <el-row>
-                                        <el-button v-if="!scope.row.team" @click="createdTeam(scope.row)" type="primary"
-                                            size="mini" plain>创建队伍
-                                        </el-button>
-                                        <el-button v-if="scope.row.team" @click="leaveTeam(scope.row)" type="warning"
-                                            size="mini" plain>离开队伍
-                                        </el-button>
-                                        <el-switch v-model="scope.row.fighting" active-text="开始战斗">
-                                            开始战斗
-                                        </el-switch>
-                                    </el-row>
-                                    <el-row v-if="!scope.row.team">
-                                        <el-table :data="scope.row.teams" border style="width: 100%; margin-top: 5px;"
-                                            size="mini">
-                                            <el-table-column prop="status" width="37">
-                                                <template slot-scope="scope">
-                                                    <i v-if="scope.row.start_bat_at && (new Date().getTime()) - (new Date(scope.row.start_bat_at).getTime()) <= 180000"
-                                                        class="ali-icon icon-zhandouzuozhan"
-                                                        :title="scope.row.start_bat_at" style="color: #f56c6c;"></i>
-                                                    <i v-else class="ali-icon icon-xiuxiankafeiyule"
-                                                        :title="scope.row.start_bat_at" style="color: #67c23a;"></i>
-                                                </template>
-                                            </el-table-column>
-                                            <el-table-column prop="combat.name" label="场景" width="100">
-                                            </el-table-column>
-                                            <el-table-column prop="leader.nickname" label="队长" width="100">
-                                            </el-table-column>
-                                            <el-table-column prop="" label="人数" width="50">
-                                                <template slot-scope="scope_users">
-                                                    {{ scope_users.row.users.length }} / 5
-                                                </template>
-                                            </el-table-column>
-                                            <el-table-column prop="address" label="加入">
-                                                <template slot="header" slot-scope="scope_team">
-                                                    <el-button type="primary" plain size="mini"
-                                                        @click="getTeamList(scope.row)">刷新</el-button>
-                                                </template>
-                                                <template slot-scope="scope_team">
-                                                    <el-button size="mini" plain
-                                                        @click="addTeam(scope.row, scope_team.row)">加入</el-button>
-                                                </template>
-                                            </el-table-column>
-                                        </el-table>
-                                    </el-row>
-                                    <div slot="reference" class="name-wrapper">
-                                        <el-tag v-if="!scope.row.team" type="danger" size="mini">不在队伍中</el-tag>
-                                        <span v-if="scope.row.team">{{ scope.row.team.leader }}</span>
-                                    </div>
-                                </el-popover>
+
+                        <el-table-column prop="team" label="队伍(队长)" width="100">
+                            <template slot-scope="scope">
+                                <!-- 显示 队伍操作相关 -->
+                                <yd-line-team :row="scope.row" />
                             </template>
                         </el-table-column>
+
                         <el-table-column prop="address" label="消息">
                         </el-table-column>
+
                         <el-table-column fixed="right" label="操作" width="100">
                             <template slot-scope="scope">
                                 <el-popover ref="view" placement="left" :title="'操作面板 ('+scope.row.email+')'"
@@ -137,19 +63,167 @@
                                 </el-popover>
 
                                 <el-button type="text" size="small" v-popover:view>操作</el-button>
-                                <el-button type="text" size="mini" class="e-danger" @click="deleteUser(scope.row)">删除
+                                <el-button type="text" size="mini" class="e-danger" @click="deleteUser(scope.row)">
+                                    删除
                                 </el-button>
                             </template>
                         </el-table-column>
+
                     </el-table>
-                </el-row>
-            </el-main>
-            <el-footer height="22px">
-                &copy;
-                <el-link href="https://www.qs5.org">青石坞</el-link>
-                by <el-link href="https://github.com/imdong/YunDingOnlineSDK">Github@YunDingOnlineSDK
-                </el-link>.
-            </el-footer>
-        </el-container>
-    </el-main>
-</el-container>
+                </el-main>
+
+                <el-footer height="22px">
+                    &copy;
+                    <el-link href="https://www.qs5.org">青石坞</el-link>
+                    by <el-link href="https://github.com/imdong/YunDingOnlineSDK">Github@YunDingOnlineSDK
+                    </el-link>.
+                </el-footer>
+            </el-container>
+        </el-main>
+
+    </el-container>
+</template>
+
+<!-- 登录表单 -->
+<template component-name="yd-login-form">
+    <el-form :model="form" :rules="rules" ref="form" hide-required-asterisk size="mini" status-icon
+        label-position="right" label-width="50px">
+
+        <el-col :span="4">
+            <el-form-item label="添加账号" label-width="80px" style="font-weight: bolder;">
+            </el-form-item>
+        </el-col>
+
+        <el-col :span="8">
+            <el-form-item label="账号" prop="email">
+                <el-input v-model="form.email"></el-input>
+            </el-form-item>
+        </el-col>
+
+        <el-col :span="8">
+            <el-form-item label="密码" prop="passwd">
+                <el-input type="password" v-model="form.passwd"></el-input>
+            </el-form-item>
+        </el-col>
+
+        <el-col :span="4">
+            <el-button type="primary" @click="onSubmit" size="mini">登录 </el-button>
+        </el-col>
+
+    </el-form>
+</template>
+
+<!-- 行内 地图选择弹窗 -->
+<template component-name="yd-line-map" props="row,maps">
+    <el-popover trigger="hover" placement="right">
+        <div class="map-left">
+            <el-link v-for="item in row.map.up" :map-id="item" v-bind:key="item.id"
+                @click="moveToNewMap(row.email, item)">
+                <i class="el-icon-arrow-left"></i>
+                {{ maps[item].name }}
+            </el-link>
+        </div>
+        <div class="map-right">
+            <el-link v-for="item in row.map.next" :map-id="item" v-bind:key="item.id"
+                @click="moveToNewMap(row.email, item)">
+                {{ maps[item].name }}
+                <i class="el-icon-arrow-right"></i>
+            </el-link>
+        </div>
+        <div slot="reference" class="name-wrapper">
+            {{ row.map.name }}
+        </div>
+    </el-popover>
+</template>
+
+<!-- 行内 队伍操作 -->
+<template component-name="yd-line-team" props="row">
+    <el-popover trigger="hover" placement="right" title="队伍操作">
+        <template>
+            <!-- 顶部操作按钮 -->
+            <el-row>
+                <el-button v-if="!row.team" @click="createdTeam(row.email, row.map.id)" type="primary" size="mini"
+                    plain>创建队伍
+                </el-button>
+                <el-button v-if="row.team" @click="leaveTeam(row.email)" type="warning" size="mini" plain>离开队伍
+                </el-button>
+                <el-switch v-if="row.team && (row.team.leader == row.email || row.team.users[0].email == row.email)" v-model="row.fighting" @change="startCombat(row.email, row.fighting, row.team.combat)" active-text="开始战斗">
+                    开始战斗
+                </el-switch>
+            </el-row>
+
+            <!-- 各个列表面板等... -->
+            <el-row>
+                <el-col :span="16">
+                    <yd-line-screens v-if="row.team" :screens="row.screens" :row="row" />
+                </el-col>
+                <el-col :span="8">
+                    <yd-line-team-info v-if="row.team" :team="row.team" />
+                </el-col>
+            </el-row>
+            <el-row>
+                <yd-line-teams :row="row" v-if="!row.team" />
+            </el-row>
+        </template>
+
+        <div slot="reference" class="name-wrapper">
+            <el-tag v-if="!row.team" type="danger" size="mini">不在队伍中</el-tag>
+            <span v-if="row.team">{{ row.team.leader || '--' }}</span>
+        </div>
+    </el-popover>
+</template>
+
+<!-- 地图内 队伍列表 -->
+<template component-name="yd-line-teams" props="row">
+    <el-table :data="row.teams" border style="width: 370px; margin-top: 5px;" size="mini">
+        <el-table-column prop="status" width="37">
+            <template slot-scope="scope">
+                <i v-if="diffTime(row.start_bat_at) <= 180000" class="ali-icon icon-zhandouzuozhan"
+                    :title="row.start_bat_at" style="color: #f56c6c;"></i>
+                <i v-else class="ali-icon icon-xiuxiankafeiyule" :title="row.start_bat_at" style="color: #67c23a;"></i>
+            </template>
+        </el-table-column>
+        <el-table-column prop="combat.name" label="场景" width="100">
+        </el-table-column>
+        <el-table-column prop="leader.nickname" label="队长" width="100">
+        </el-table-column>
+        <el-table-column prop="" label="人数" width="50">
+            <template slot-scope="scope_users">
+                {{ scope_users.row.users.length }} / 5
+            </template>
+        </el-table-column>
+        <el-table-column prop="address" label="加入">
+            <template slot="header" slot-scope="scope_team">
+                <el-button type="primary" plain size="mini" @click="getTeamList(row.email, row.map.id)">刷新</el-button>
+            </template>
+            <template slot-scope="scope_team">
+                <el-button size="mini" plain @click="addTeam(row.email, scope_team.row._id)">加入</el-button>
+            </template>
+        </el-table-column>
+    </el-table>
+</template>
+
+<!-- 场景列表 -->
+<template component-name="yd-line-screens" props="row,screens">
+    <el-card class="box-card e-screens" size="mini">
+        <div slot="header" class="clearfix">
+            <span>场景列表</span>
+        </div>
+        <template v-for="screen in screens">
+            <el-button :key="screen._id" size="mini" :type="screen._id == row.team.combat ? 'success' : 'primary'"
+                @click="switchCombatScreen(row.email, screen._id)">{{ screen.name }}</el-button>
+        </template>
+
+    </el-card>
+</template>
+
+<!-- 队伍信息 -->
+<template component-name="yd-line-team-info" props="team">
+    <el-table :data="team.users" style="width: 150px; margin-top: 5px;" size="mini">
+        <el-table-column prop="email" label="昵称" width="100">
+        </el-table-column>
+        <el-table-column prop="level" label="等级" width="45">
+        </el-table-column>
+    </el-table>
+
+</template>
