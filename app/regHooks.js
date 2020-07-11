@@ -9,17 +9,26 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
     // 接管登录成功的回调
     let loginCb = function (data) {
-        let index = this.user_index,
-            email = this.email;
+        let user = app.getUser(this.email);
+        console.log('loginCb', data);
 
         // 检查错误
-        if (data.code != 200) {
-            app.user_list[index].status = "登录失败";
-            app.user_list[index].status_msg = data.msg;
+        if (data.code == 500) {
+            user.status = "登录失败";
+            user.status_msg = "账号已在他处登录";
+            return;
+        } else if (data.code != 200) {
+            user.status = "登录失败";
+            user.status_msg = data.msg || '未知错误';
             return;
         }
+
         // 登录成功
-        app.user_list[index].status = '登录成功';
+        if (data.token) {
+            user.status = '鉴权成功';
+            return;
+        }
+        user.status = '登录成功';
 
         // 没有数据就不在继续了
         if ('object' != typeof data.data) {
@@ -27,10 +36,10 @@ define(['YunDingOnlineSDK'], function (GameApi) {
         }
 
         // 标记自己登陆成功
-        app.$set(app.user_list[index], 'isLogin', true);
+        app.$set(user, 'isLogin', true);
 
         // 记录地图位置
-        app.$set(app.user_list[index], 'map', data.data.map);
+        app.$set(user, 'map', data.data.map);
     }
     loginCb.hookMark = "regHooks.loginCb";
     GameApi.regHookHandlers['gate.gateHandler.queryEntry'].push(loginCb);
@@ -38,8 +47,10 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
     // 移动地图的返回
     let moveToNewMapCb = function (data) {
+        let user = app.getUser(this.email);
+
         // 更新地图位置
-        app.$set(app.user_list[this.user_index], 'map', data.map);
+        app.$set(user, 'map', data.map);
         console.log('moveToNewMapCb', data);
     };
     moveToNewMapCb.hookMark = "regHooks.moveToNewMapCb";
@@ -54,7 +65,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
         console.log('createdTeamCb', data);
 
         // 保存队长信息
-        app.$set(app.user_list[this.user_index], 'team', {
+        app.$set(app.getUser(this.email), 'team', {
             leader: this.email,
             users: []
         });
@@ -72,7 +83,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
         }
         console.log('createdTeamCb', data);
 
-        app.$delete(app.user_list[this.user_index], 'team');
+        app.$delete(app.getUser(this.email), 'team');
         app.$message('已离开队伍');
     }
     leaveTeamCb.hookMark = "regHooks.leaveTeamCb";
@@ -108,7 +119,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             }
         }
 
-        app.$set(app.user_list[this.user_index], 'team', {
+        app.$set(app.getUser(this.email), 'team', {
             combat: combat,
             leader: leader,
             users: users
@@ -126,9 +137,11 @@ define(['YunDingOnlineSDK'], function (GameApi) {
         }
         console.log('onMyTeamReloadCb', data);
 
+        let user = app.getUser(this.email);
+
         // 退出队伍后还会推送清空团队
         if (!data.team) {
-            app.$delete(app.user_list[this.user_index], 'team');
+            app.$delete(user, 'team');
             return;
         }
 
@@ -147,7 +160,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
             })
         }
 
-        app.$set(app.user_list[this.user_index], 'team', {
+        app.$set(user, 'team', {
             leader: leader,
             users: users
         });
@@ -163,8 +176,10 @@ define(['YunDingOnlineSDK'], function (GameApi) {
         }
         console.log('getTeamListCb', data);
 
-        app.$set(app.user_list[this.user_index], 'screens', data.data.screens);
-        app.$set(app.user_list[this.user_index], 'teams', data.data.teams);
+        let user = app.getUser(this.email);
+
+        app.$set(user, 'screens', data.data.screens);
+        app.$set(user, 'teams', data.data.teams);
     }
     getTeamListCb.hookMark = "regHooks.getTeamListCb";
     GameApi.regHookHandlers['connector.teamHandler.getTeamList'].push(getTeamListCb);
