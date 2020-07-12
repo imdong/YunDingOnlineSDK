@@ -126,6 +126,12 @@ define(['vue', 'data!app-template', 'css!ali-icon', 'css!app-style', 'css!elemen
                 console.log('createdTeam', email, map_id);
                 app.game_list[email].createdTeam(map_id);
             },
+            // 获取团队列表
+            getTeamList: function (email, map_id) {
+                console.log('getTeamList', email, map_id);
+                app.game_list[email].getTeamList(map_id);
+                return null;
+            },
             // 离开队伍
             leaveTeam: function (email) {
                 console.log('leaveTeam', email);

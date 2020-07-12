@@ -45,7 +45,9 @@
             template: ydComponents.main,
             data: {
                 user_list: [],
-                tableData: [],
+                config: {},
+                official: '',
+                official_show: false
             },
             // 创建完毕回调
             mounted: function () {
@@ -54,6 +56,7 @@
 
                 // 全局配置
                 this.config = config;
+                // this.$set('config', config)
 
                 // 一定要马上将自己暴露给 regHook 里面
                 regHooks(this);
@@ -62,8 +65,9 @@
                 // 加载历史账号
                 let users = this.getStorageUser();
                 Object.keys(users).forEach((email) => {
-                    this.addUser(email, users[email], true);
+                    this.addUser(email, users[email]);
                 });
+
             },
             computed: {
                 /**
@@ -114,7 +118,7 @@
                  */
                 getUser: function (email) {
                     let index = this.userMap[email];
-                    // console.log('getUser', email, index);
+
                     if (index === undefined) {
                         return null;
                     }
@@ -162,8 +166,8 @@
                  * 删除用户
                  * @param {*} row
                  */
-                deleteUser: function (row) {
-                    let index = this.userMap[row.email];
+                deleteUser: function (email) {
+                    let index = this.userMap[email];
 
                     // 从列表删除此用户
                     this.user_list.splice(index, 1);
@@ -173,6 +177,68 @@
 
                     // 更新保存用户
                     this.saveStorageUser(row.email);
+                },
+                /**
+                 * 登录
+                 * @param {*} email
+                 */
+                loginUser: function (email) {
+                    let game = this.getGame(email),
+                        user = this.getUser(email),
+                        passwd = this.getStorageUser(email);
+
+                    // 断开连接
+                    if (game.socket) {
+                        user.status = '正在退出';
+                        game.Stop();
+                    }
+
+                    // 删除游戏对象
+                    delete this.game_list[email];
+
+                    // 创建游戏对象
+                    game = new GameApi();
+
+                    // 游戏对象保存起来
+                    this.game_list[email] = game;
+
+                    user.status = '正在登录';
+                    game.login(email, passwd);
+                },
+                // 退出登录
+                logoutUser: function (email) {
+                    let game = this.getGame(email),
+                        user = this.getUser(email);
+
+                    // 断开连接
+                    if (game && game.socket) {
+                        game.Stop();
+                    }
+
+                    user.status = '已经退出';
+                    user.isLogin = false;
+                },
+                /**
+                 * 到官网 查看用户
+                 * @param {}} email
+                 */
+                viewUser: function (email) {
+                    let login_info = {
+                        email: email,
+                        pwd: this.getStorageUser(email)
+                    }, bcode = btoa(encodeURIComponent(JSON.stringify(login_info))),
+                        url = this.config.core.official_login + '#autologin=' + bcode;
+
+                    // 退出登录
+                    this.logoutUser(email);
+
+                    // 设置 地址
+                    window.open(url);
+
+                    return;
+                    // 不能在本站内打开
+                    this.official = url;
+                    this.official_show = true;
                 },
                 // 设置消息
                 setMessage: function (email, data) {
@@ -224,12 +290,6 @@
                 }
             }
         });
-
-        // 测试账号
-        app.login_form = {
-            email: 'test2',
-            password: '123456'
-        };
 
         // 暴露到全局
         exports.app = app;

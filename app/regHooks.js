@@ -132,9 +132,25 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
         let user = app.getUser(this.email);
 
-        // 退出队伍后还会推送清空团队
-        if (!data.team) {
+        // 队员退出
+        if (data.new_uid && !data.team && user.team) {
+            // 移除队员
+            user.team.users.forEach((item, index) => {
+                if (item._id == data.new_uid) {
+                    user.team.users.splice(index, 1);
+                }
+            });
+            return;
+        }
+
+        // 队长退出队伍 data = {} 只有自己会收到
+        if (data.data) {
             app.$delete(user, 'team');
+            return;
+        }
+
+        // 没有队伍信息是干啥?
+        if (!data.team) {
             return;
         }
 
@@ -148,6 +164,7 @@ define(['YunDingOnlineSDK'], function (GameApi) {
                 leader = user.email;
             }
             users.push({
+                _id: user._id,
                 email: user.email,
                 level: user.level
             })
@@ -174,6 +191,12 @@ define(['YunDingOnlineSDK'], function (GameApi) {
 
         app.$set(user, 'screens', data.data.screens);
         app.$set(user, 'teams', data.data.teams);
+
+        // 特别标记队长
+        if (data.data.myTeam) {
+            data.data.myTeam.leader = data.data.myTeam.users[0].nickname;
+        }
+        app.$set(user, 'team', data.data.myTeam);
     }
     getTeamListCb.hookMark = "regHooks.getTeamListCb";
     GameApi.regHookHandlers['connector.teamHandler.getTeamList'].push(getTeamListCb);

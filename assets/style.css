@@ -29,14 +29,29 @@ body {
     padding: 0;
 }
 
+/* 用户表格 操作 按钮间距 */
+.e-operating .cell > button.el-button {
+    margin-left: 0;
+}
+
 .top-tools {
     text-align: right;
 }
 
+/* 抄袭配色 */
 .e-danger span {
     color: #f56c6c;
 }
-
+.e-danger span {
+    color: #f56c6c;
+}
+.e-success span {
+    color: #67c23a;
+}
+.e-warning span {
+    color: #e6a23c;
+    border-color: #e6a23c;
+}
 .map-left, .map-right {
     width: 150px;
 }

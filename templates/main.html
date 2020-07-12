@@ -57,18 +57,41 @@
                             </template>
                         </el-table-column>
 
-                        <el-table-column fixed="right" label="操作" width="100">
+                        <el-table-column fixed="right" label="操作" width="110" class-name="e-operating">
                             <template slot-scope="scope">
                                 <el-popover ref="view" placement="left" :title="'操作面板 ('+scope.row.email+')'"
                                     trigger="hover">
-                                    <el-button type="text" size="mini" class="e-danger" @click="view(scope.row)">删除
+                                    <el-button type="text" size="mini" class="e-danger"
+                                        @click="deleteUser(scope.row.email)">
+                                        删除
+                                    </el-button>
+                                    <el-button type="text" size="small" slot="reference">操作</el-button>
+                                </el-popover>
+
+                                <el-button v-if="scope.row.isLogin" @click="logoutUser(scope.row.email)" type="text"
+                                    size="mini" class="e-warning">
+                                    退出
+                                </el-button>
+                                <el-button v-else @click="loginUser(scope.row.email)" type="text" size="mini"
+                                    class="e-success">
+                                    登录
+                                </el-button>
+
+                                <el-popover ref="view" placement="left" :title="'登录到官网 ('+scope.row.email+')'"
+                                    trigger="hover">
+                                    <p>将退出此用户并打开官网页面，</p>
+                                    <p>如安装插件则可实现自动登录。</p>
+                                    <div style="text-align: right; margin: 0">
+                                        <el-link target="_blank" :href="config.core.ext_url">安装插件</el-link>
+                                        <el-button type="primary" size="mini" @click="viewUser(scope.row.email)">打开官网
+                                        </el-button>
+                                    </div>
+                                    <el-button type="text" size="mini" @click="viewUser(scope.row.email)"
+                                        slot="reference">
+                                        官网
                                     </el-button>
                                 </el-popover>
 
-                                <el-button type="text" size="small" v-popover:view>操作</el-button>
-                                <el-button type="text" size="mini" class="e-danger" @click="deleteUser(scope.row)">
-                                    删除
-                                </el-button>
                             </template>
                         </el-table-column>
 
@@ -82,6 +105,11 @@
                     </el-link>.
                 </el-footer>
             </el-container>
+
+            <el-drawer :visible.sync="official_show" direction="ltr" :with-header="false" :destroy-on-close="true" size="95%">
+                <iframe :src="official" style="width: 100%; height: 100%;"></iframe>
+            </el-drawer>
+
         </el-main>
 
     </el-container>
@@ -150,6 +178,8 @@
                 </el-button>
                 <el-button v-if="row.team" @click="leaveTeam(row.email)" type="warning" size="mini" plain>离开队伍
                 </el-button>
+                <el-button v-if="row.team" type="primary" plain size="mini" @click="getTeamList(row.email, row.map.id)">
+                    刷新</el-button>
                 <el-switch v-if="row.team && (row.team.leader == row.email || row.team.users[0].email == row.email)"
                     v-model="row.fighting" @change="startCombat(row.email, row.fighting, row.team.combat)"
                     active-text="开始战斗">
@@ -173,7 +203,7 @@
 
         <div slot="reference" class="name-wrapper">
             <el-tag v-if="!row.team" type="danger" size="mini">不在队伍中</el-tag>
-            <span v-if="row.team">{{ row.team.leader || '--' }}</span>
+            <span v-if="row.team">{{ row.team.leader || row.team.users[0].nickname || '--' }}</span>
         </div>
     </el-popover>
 </template>

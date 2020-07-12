@@ -656,15 +656,23 @@ define(['protocol'], function (Protocol) {
         // 标记自己要停止了
         this.isStop = true;
 
+        // 如果都没建立 就不存在退出了
+        if (!this.socket) {
+            return;
+        }
+
         // 断开 WS 链接
         this.socket.close();
 
         // 停止心跳
         if (this.heartbeatId) {
-            clearTimeout(this.heartbeatId)
+            clearInterval(this.heartbeatId)
         }
         if (this.heartbeatTimeoutId) {
             clearTimeout(this.heartbeatTimeoutId);
+        }
+        if (this.xyUpdateIntervalId) {
+            clearInterval(this.xyUpdateIntervalId)
         }
     }
 
