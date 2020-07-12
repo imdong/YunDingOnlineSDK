@@ -1,4 +1,8 @@
 {
+    "core": {
+        "ext_url": "https://www.qs5.org",
+        "official_login": "http://yundingxx.com:3366/login"
+    },
     "maps": [
         null,
         {
