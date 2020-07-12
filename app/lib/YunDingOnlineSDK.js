@@ -77,7 +77,7 @@ define(['protocol'], function (Protocol) {
             }
 
             let datas = data.data || data,
-                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds', 'team', 'teams', 'screens'];
+                save_keys = ['map', 'myInfo', 'players', 'userTasks', 'wordLogds', 'team', 'teams', 'screens', 'initData'];
             save_keys.forEach((key) => {
                 if (!datas[key]) {
                     return;
@@ -180,6 +180,9 @@ define(['protocol'], function (Protocol) {
         "onLeave": [],    //* 玩家离开
         "onChatMsg": [],    //* 收到消息
         "onMyTeamReload": [ // 重新载入队伍
+            CoreHooks.onSaveData
+        ],
+        "onStartBat": [ // 战斗开始
             CoreHooks.onSaveData
         ],
         "onRoundBatEnd": [ // 战斗结束
