@@ -193,19 +193,39 @@ define(['YunDingOnlineSDK'], function (GameApi) {
     switchCombatScreenCb.hookMark = "regHooks.switchCombatScreenCb";
     GameApi.regHookHandlers['connector.teamHandler.switchCombatScreen'].push(switchCombatScreenCb);
 
+    // 战斗开始
+    let onStartBatCb = function (data) {
+        console.log('onStartBatCb', data);
+    }
+    onStartBatCb.hookMark = "regHooks.onStartBatCb";
+    GameApi.regHookHandlers['onStartBat'].push(onStartBatCb);
+
     // 战斗结束
     let onRoundBatEndCb = function (data) {
         // 开启新的战斗
         if (app.getUser(this.email).fighting && data.data.win > 0) {
             this.startCombat(this.user_info.team.combat);
         }
-        console.log('onRoundBatEndCb', data);
+        // console.log('onRoundBatEndCb', data);
 
         // 保存战斗消息
         app.setMessage(this.email, data.data);
     }
     onRoundBatEndCb.hookMark = "regHooks.onRoundBatEndCb";
     GameApi.regHookHandlers['onRoundBatEnd'].push(onRoundBatEndCb);
+
+    // 回合操作
+    let roundOperatingCb = function (data) {
+        if (data.code != 200) {
+            app.$message.error(data.msg);
+            return;
+        }
+        console.log('switchCombatScreenCb', this.email, data);
+    }
+    roundOperatingCb.hookMark = "regHooks.roundOperatingCb";
+    GameApi.regHookHandlers['connector.teamHandler.roundOperating'].push(roundOperatingCb);
+
+
 
     // 暴露一个接口 用来接收 app 对象
     return function (_app) {
